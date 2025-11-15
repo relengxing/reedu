@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火车过隧道问题 - 二元一次方程组</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        section {
+            width: 100%;
+            min-height: 100vh;
+            /* aspect-ratio: 16/9; */
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1.2rem;
+            color: #3498db;
+            text-align: center;
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        p {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .content-container {
+            width: 100%;
+            padding: 20px;
+        }
+        
+        .problem-statement {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .problem-statement p {
+            font-size: 1.4rem;
+            line-height: 1.8;
+        }
+        
+        .highlight {
+            background-color: #fffacd;
+            padding: 3px 5px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        
+        /* 动画演示区域样式 */
+        .animation-container {
+            width: 100%;
+            height: 300px;
+            background-color: #e8f4fc;
+            border-radius: 10px;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #3498db;
+        }
+        
+        .tunnel {
+            position: absolute;
+            top: 100px;
+            left: 200px;
+            width: 900px;
+            height: 150px;
+            background-color: #7f8c8d;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .tunnel-opening {
+            position: absolute;
+            top: 0;
+            width: 20px;
+            height: 150px;
+            background-color: #95a5a6;
+        }
+        
+        .tunnel-opening.left {
+            left: 0;
+        }
+        
+        .tunnel-opening.right {
+            right: 0;
+        }
+        
+        .train {
+            position: absolute;
+            top: 125px;
+            left: 50px;
+            width: 150px;
+            height: 50px;
+            background-color: #e74c3c;
+            border-radius: 10px;
+            transition: left 0.1s linear;
+        }
+        
+        .train-front {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 50px;
+            background-color: #c0392b;
+            border-radius: 10px 0 0 10px;
+        }
+        
+        .train-back {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 20px;
+            height: 50px;
+            background-color: #c0392b;
+            border-radius: 0 10px 10px 0;
+        }
+        
+        .train-window {
+            position: absolute;
+            top: 10px;
+            left: 25px;
+            width: 15px;
+            height: 30px;
+            background-color: #3498db;
+            border-radius: 3px;
+        }
+        
+        .distance-marker {
+            position: absolute;
+            bottom: 10px;
+            height: 10px;
+            background-color: #2c3e50;
+        }
+        
+        .distance-label {
+            position: absolute;
+            bottom: 25px;
+            font-size: 0.9rem;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .animation-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .animation-btn {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+        }
+        
+        .animation-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .animation-slider {
+            width: 600px;
+        }
+        
+        .math-formula {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 1.4rem;
+            text-align: center;
+        }
+        
+        .interactive-container {
+            margin: 25px 0;
+            width: 100%;
+        }
+        
+        .toggle-btn {
+            padding: 15px 25px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+        
+        .toggle-btn::after {
+            content: "▶";
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-btn.expanded::after {
+            transform: rotate(90deg);
+        }
+        
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            opacity: 0;
+        }
+        
+        .content.expanded {
+            max-height: 1000px;
+            padding: 25px;
+            margin-top: 20px;
+            opacity: 1;
+        }
+        
+        .content p {
+            margin-bottom: 15px;
+        }
+        
+        .content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+        
+        .solution {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f4fc;
+            border-radius: 8px;
+        }
+        
+        .solution h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .variable-definition {
+            background-color: #e8f4fc;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .variable-definition ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        .variable-definition li {
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .variable-definition li:before {
+            content: "•";
+            color: #3498db;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        .cover-info {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .cover-info p {
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+        }
+        
+        .cover-title {
+            font-size: 3rem !important;
+            color: #2c3e50;
+            margin-bottom: 30px !important;
+        }
+        
+        .equation-system {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .equation {
+            font-size: 1.8rem;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            min-width: 250px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            section {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            h2 {
+                font-size: 1.7rem;
+            }
+            
+            p {
+                font-size: 1.1rem;
+            }
+            
+            .animation-container {
+                height: 200px;
+            }
+            
+            .tunnel {
+                left: 100px;
+                width: 900px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面 -->
+    <section id="cover" data-section="0">
+        <div class="content-container">
+            <h1 class="cover-title">火车过隧道问题</h1>
+            <h2>二元一次方程组的应用</h2>
+            <div class="cover-info">
+                <p>教材版本：人教版</p>
+                <p>学科：数学</p>
+                <p>年级学期：七年级下册</p>
+                <p>作者：数学教研组</p>
+                <p>单位：XX中学</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- 问题引入 -->
+    <section id="problem-intro" data-section="1">
+        <div class="content-container">
+            <h2>问题引入</h2>
+            <div class="problem-statement">
+                <p>一列火车以 <span class="highlight">40 m/s</span> 的速度经过一个隧道，从车头进入隧道到车尾驶出隧道，共用时 <span class="highlight">30秒</span>，其中火车全身都在隧道里的时间是 <span class="highlight">20秒</span>。</p>
+                <p>请问：隧道和火车的长度分别是多少？</p>
+            </div>
+            
+            <div class="animation-container">
+                <div class="tunnel">
+                    <div class="tunnel-opening left"></div>
+                    <div class="tunnel-opening right"></div>
+                </div>
+                <div class="train" id="train">
+                    <div class="train-front"></div>
+                    <div class="train-window"></div>
+                    <div class="train-back"></div>
+                </div>
+                <div class="distance-marker" id="tunnel-length" style="left: 200px; width: 900px;"></div>
+                <div class="distance-label" style="left: 450px;">隧道长度 S</div>
+                <div class="distance-marker" id="train-length" style="left: 50px; width: 150px;"></div>
+                <div class="distance-label" style="left: 100px;">火车长度 L</div>
+            </div>
+            
+            <div class="animation-controls">
+                <button class="animation-btn" id="play-btn">播放动画</button>
+                <button class="animation-btn" id="pause-btn">暂停</button>
+                <button class="animation-btn" id="reset-btn">重置</button>
+                <input type="range" min="0.1" max="100" value="0" class="animation-slider" id="animation-slider">
+            </div>
+        </div>
+    </section>
+    
+    <!-- 建立方程 -->
+    <section id="equation-setup" data-section="2">
+        <div class="content-container">
+            <h2>建立方程</h2>
+            
+            <div class="variable-definition">
+                <h3>设未知数：</h3>
+                <ul>
+                    <li>设火车的长度为 <span class="math">L</span> 米</li>
+                    <li>设隧道的长度为 <span class="math">S</span> 米</li>
+                </ul>
+            </div>
+            
+            <div class="math-formula">
+                <p>火车的速度：<span class="math">v = 40 \text{ m/s}</span></p>
+            </div>
+            
+            <h3>分析过程一：火车完全通过隧道</h3>
+            <p>从车头进入隧道到车尾驶出隧道，火车需要行驶的距离是：</p>
+            <div class="math-formula">
+                <p><span class="math">S + L</span></p>
+            </div>
+            <p>用时 <span class="highlight">30秒</span>，所以：</p>
+            <div class="equation">
+                <p><span class="math">S + L = 40 \times 30</span></p>
+            </div>
+            
+            <h3>分析过程二：火车完全在隧道内</h3>
+            <p>火车全身都在隧道里时，行驶的距离是：</p>
+            <div class="math-formula">
+                <p><span class="math">S - L</span></p>
+            </div>
+            <p>用时 <span class="highlight">20秒</span>，所以：</p>
+            <div class="equation">
+                <p><span class="math">S - L = 40 \times 20</span></p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- 方程组 -->
+    <section id="equation-system" data-section="3">
+        <div class="content-container">
+            <h2>二元一次方程组</h2>
+            <p>根据以上分析，我们得到方程组：</p>
+            
+            <div class="equation-system">
+                <div class="equation">
+                    <p><span class="math">S + L = 1200</span></p>
+                </div>
+                <div class="equation">
+                    <p><span class="math">S - L = 800</span></p>
+                </div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#solution-1">
+                    <span>查看解题过程</span>
+                </button>
+                <div id="solution-1" class="content">
+                    <p>我们可以使用加减消元法解这个方程组：</p>
+                    
+                    <div class="solution">
+                        <h3>解法一：加减消元法</h3>
+                        <p>将两个方程相加：</p>
+                        <p><span class="math">(S + L) + (S - L) = 1200 + 800</span></p>
+                        <p><span class="math">2S = 2000</span></p>
+                        <p><span class="math">S = 1000</span></p>
+                        
+                        <p>将 <span class="math">S = 1000</span> 代入第一个方程：</p>
+                        <p><span class="math">1000 + L = 1200</span></p>
+                        <p><span class="math">L = 200</span></p>
+                    </div>
+                    
+                    <div class="solution">
+                        <h3>解法二：代入法</h3>
+                        <p>由第二个方程得：<span class="math">S = 800 + L</span></p>
+                        <p>代入第一个方程：</p>
+                        <p><span class="math">(800 + L) + L = 1200</span></p>
+                        <p><span class="math">800 + 2L = 1200</span></p>
+                        <p><span class="math">2L = 400</span></p>
+                        <p><span class="math">L = 200</span></p>
+                        <p>代入 <span class="math">S = 800 + L = 800 + 200 = 1000</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- 答案验证 -->
+    <section id="answer-verification" data-section="4">
+        <div class="content-container">
+            <h2>答案与验证</h2>
+            
+            <div class="math-formula">
+                <p>隧道的长度：<span class="math">S = 1000 \text{ 米}</span></p>
+                <p>火车的长度：<span class="math">L = 200 \text{ 米}</span></p>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#verification-1">
+                    <span>验证答案</span>
+                </button>
+                <div id="verification-1" class="content">
+                    <p><strong>验证一：</strong>火车完全通过隧道</p>
+                    <p>行驶距离：<span class="math">S + L = 1000 + 200 = 1200 \text{ 米}</span></p>
+                    <p>所需时间：<span class="math">\frac{1200}{40} = 30 \text{ 秒}</span>，与题目一致</p>
+                    
+                    <p><strong>验证二：</strong>火车完全在隧道内</p>
+                    <p>行驶距离：<span class="math">S - L = 1000 - 200 = 800 \text{ 米}</span></p>
+                    <p>所需时间：<span class="math">\frac{800}{40} = 20 \text{ 秒}</span>，与题目一致</p>
+                    
+                    <div class="solution">
+                        <h3>结论</h3>
+                        <p>我们的答案正确！隧道的长度是1000米，火车的长度是200米。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有切换按钮
+            const toggleButtons = document.querySelectorAll('.toggle-btn');
+            console.log("DOMContentLoaded")
+            
+            // 为每个按钮添加点击事件
+            toggleButtons.forEach(button => {
+            console.log("button add event")
+
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const target = document.querySelector(targetId);
+                    
+                    if (target) {
+                        // 切换内容区域的展开/收起状态
+                        target.classList.toggle('expanded');
+                        
+                        // 更新按钮状态
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
+            
+            // 渲染数学公式
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ]
+                });
+            }
+            
+            // 火车动画相关代码
+            const train = document.getElementById('train');
+            const playBtn = document.getElementById('play-btn');
+            const pauseBtn = document.getElementById('pause-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const slider = document.getElementById('animation-slider');
+            
+            let animationId;
+            let currentPosition = 0;
+            const maxPosition = 1400; // 最大移动距离
+            const animationSpeed = 2; // 动画速度
+            
+            function updateTrainPosition() {
+                train.style.left = `${currentPosition}px`;
+                slider.value = (currentPosition / maxPosition) * 100;
+                
+                if (currentPosition < maxPosition) {
+                    currentPosition += animationSpeed;
+                    animationId = requestAnimationFrame(updateTrainPosition);
+                }
+            }
+            
+            function playAnimation() {
+                console.log("开始播放")
+                if (currentPosition >= maxPosition) {
+                    currentPosition = 0;
+                }
+                cancelAnimationFrame(animationId);
+                animationId = requestAnimationFrame(updateTrainPosition);
+            }
+            
+            function pauseAnimation() {
+                cancelAnimationFrame(animationId);
+            }
+            
+            function resetAnimation() {
+                cancelAnimationFrame(animationId);
+                currentPosition = 0;
+                train.style.left = `${currentPosition}px`;
+                slider.value = 0;
+            }
+            
+            function updatePositionFromSlider() {
+                currentPosition = (slider.value / 100) * maxPosition;
+                train.style.left = `${currentPosition}px`;
+            }
+            playBtn.addEventListener('click', playAnimation);
+            pauseBtn.addEventListener('click', pauseAnimation);
+            resetBtn.addEventListener('click', resetAnimation);
+            slider.addEventListener('input', updatePositionFromSlider);
+        });
+    </script>
+</body>
+</html>
