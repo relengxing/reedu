@@ -8,13 +8,11 @@ import CoursewarePlayer from './pages/CoursewarePlayer';
 import CountdownDisplay from './components/CountdownDisplay';
 import CountdownEndAnimation from './components/CountdownEndAnimation';
 import RollCallAnimation from './components/RollCallAnimation';
-import { CoursewareContext } from './context/CoursewareContext';
-import type { CoursewareData } from './types';
+import { CoursewareProvider } from './context/CoursewareContext';
 
 const { Content } = Layout;
 
 const App: React.FC = () => {
-  const [courseware, setCourseware] = useState<CoursewareData | null>(null);
   const [countdownTime, setCountdownTime] = useState<number>(0);
   const [isCountdownRunning, setIsCountdownRunning] = useState<boolean>(false);
   const [isCountdownPaused, setIsCountdownPaused] = useState<boolean>(false);
@@ -97,7 +95,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <CoursewareContext.Provider value={{ courseware, setCourseware }}>
+    <CoursewareProvider>
       <Router>
         <Layout style={{ height: '100vh', overflow: 'hidden' }}>
           <TopNav
@@ -117,6 +115,7 @@ const App: React.FC = () => {
             <Routes>
               <Route path="/" element={<HomePage />} />
               <Route path="/catalog" element={<CatalogPage />} />
+              <Route path="/player/:coursewareIndex/:pageIndex" element={<CoursewarePlayer />} />
               <Route path="/player/:pageIndex" element={<CoursewarePlayer />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
@@ -142,7 +141,7 @@ const App: React.FC = () => {
           />
         </Layout>
       </Router>
-    </CoursewareContext.Provider>
+    </CoursewareProvider>
   );
 };
 

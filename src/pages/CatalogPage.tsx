@@ -8,7 +8,7 @@ const { Title } = Typography;
 
 const CatalogPage: React.FC = () => {
   const navigate = useNavigate();
-  const { courseware } = useCourseware();
+  const { courseware, currentCoursewareIndex } = useCourseware();
 
   if (!courseware) {
     return (
@@ -47,7 +47,7 @@ const CatalogPage: React.FC = () => {
                 title={
                   <Button
                     type="link"
-                    onClick={() => navigate(`/player/${index}`)}
+                    onClick={() => navigate(`/player/${currentCoursewareIndex}/${index}`)}
                     style={{ padding: 0, height: 'auto' }}
                   >
                     {page.title || `第${index + 1}页`}

@@ -8,13 +8,23 @@ import { renderMath } from '../utils/mathRenderer';
 const { Text } = Typography;
 
 const CoursewarePlayer: React.FC = () => {
-  const { pageIndex } = useParams<{ pageIndex: string }>();
+  const { coursewareIndex, pageIndex } = useParams<{ coursewareIndex?: string; pageIndex: string }>();
   const navigate = useNavigate();
-  const { courseware } = useCourseware();
+  const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex, courseware } = useCourseware();
   const [currentIndex, setCurrentIndex] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const mathRenderedRef = useRef<boolean>(false); // 标记公式是否已渲染
   const scrollUpdateTimerRef = useRef<number | null>(null); // 滚动更新防抖定时器
+
+  // 根据路由参数确定当前课件索引
+  useEffect(() => {
+    if (coursewareIndex !== undefined) {
+      const cwIndex = parseInt(coursewareIndex, 10);
+      if (!isNaN(cwIndex) && cwIndex >= 0 && cwIndex < coursewares.length) {
+        setCurrentCoursewareIndex(cwIndex);
+      }
+    }
+  }, [coursewareIndex, coursewares.length, setCurrentCoursewareIndex]);
 
   useEffect(() => {
     if (pageIndex) {
@@ -263,12 +273,13 @@ const CoursewarePlayer: React.FC = () => {
               
               // 获取当前URL中的索引
               const currentPath = window.location.pathname;
-              const match = currentPath.match(/\/player\/(\d+)/);
-              const currentUrlIndex = match ? parseInt(match[1], 10) : 0;
+              // 匹配 /player/{coursewareIndex}/{pageIndex} 或 /player/{pageIndex}
+              const match = currentPath.match(/\/player\/(\d+)(?:\/(\d+))?/);
+              const currentUrlIndex = match && match[2] ? parseInt(match[2], 10) : (match ? parseInt(match[1], 10) : 0);
               
               // 如果计算出的索引与URL中的索引不同，更新URL（这会触发导航栏更新）
               if (activeIndex !== currentUrlIndex) {
-                navigate(`/player/${activeIndex}`, { replace: true });
+                navigate(`/player/${currentCoursewareIndex}/${activeIndex}`, { replace: true });
               }
             }, 150); // 150ms防抖
           };
@@ -382,7 +393,7 @@ const CoursewarePlayer: React.FC = () => {
     if (currentIndex > 0) {
       const newIndex = currentIndex - 1;
       setCurrentIndex(newIndex);
-      navigate(`/player/${newIndex}`);
+      navigate(`/player/${currentCoursewareIndex}/${newIndex}`);
     }
   };
 
@@ -390,7 +401,7 @@ const CoursewarePlayer: React.FC = () => {
     if (currentIndex < courseware.pages.length - 1) {
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
-      navigate(`/player/${newIndex}`);
+      navigate(`/player/${currentCoursewareIndex}/${newIndex}`);
     }
   };
 

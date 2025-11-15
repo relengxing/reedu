@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Menu, Button } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { HomeOutlined, ToolOutlined, FileTextOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
@@ -19,6 +19,18 @@ interface TopNavProps {
   onRollCallStart?: (names: string[]) => void;
 }
 
+// 淡色背景颜色数组，每个课件使用不同颜色
+const COURSEWARE_COLORS = [
+  '#f0f5ff', // 淡蓝色
+  '#f6ffed', // 淡绿色
+  '#fff7e6', // 淡橙色
+  '#fff0f6', // 淡粉色
+  '#f0f9ff', // 淡青色
+  '#f9f0ff', // 淡紫色
+  '#fffbf0', // 淡黄色
+  '#f0fff4', // 淡薄荷绿
+];
+
 const TopNav: React.FC<TopNavProps> = ({
   onToolsClick,
   countdownTime = 0,
@@ -34,39 +46,72 @@ const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { courseware } = useCourseware();
+  const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex } = useCourseware();
   const menuContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [menuItemColors, setMenuItemColors] = useState<Map<number, string>>(new Map());
 
-  const menuItems = [
-    {
-      key: '/',
-      icon: <HomeOutlined />,
-      label: '首页',
-    },
-    {
-      key: 'tools',
-      icon: <ToolOutlined />,
-      label: '工具',
-    },
-    ...(courseware
-      ? courseware.pages.map((page, index) => ({
-          key: `/player/${index}`,
+  // 构建菜单项：首页、工具、每个课件的页面
+  const { menuItems, menuItemColors: computedColors } = useMemo(() => {
+    const items: Array<{ key: string; icon: React.ReactNode; label: string }> = [
+      {
+        key: '/',
+        icon: <HomeOutlined />,
+        label: '首页',
+      },
+      {
+        key: 'tools',
+        icon: <ToolOutlined />,
+        label: '工具',
+      },
+    ];
+
+    const colorMap = new Map<number, string>();
+    let itemIndex = items.length;
+    
+    // 为每个课件添加页面菜单项，使用不同的背景颜色
+    coursewares.forEach((cw, cwIndex) => {
+      const bgColor = COURSEWARE_COLORS[cwIndex % COURSEWARE_COLORS.length];
+      cw.pages.forEach((page) => {
+        items.push({
+          key: `/player/${cwIndex}/${page.index}`,
           icon: <FileTextOutlined />,
-          label: page.title || `第${index + 1}页`,
-        }))
-      : []),
-  ];
+          label: page.title || `第${page.index + 1}页`,
+        });
+        colorMap.set(itemIndex, bgColor);
+        itemIndex++;
+      });
+    });
+
+    return { menuItems: items, menuItemColors: colorMap };
+  }, [coursewares]);
+
+  // 更新颜色映射状态
+  useEffect(() => {
+    setMenuItemColors(computedColors);
+  }, [computedColors]);
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === 'tools') {
       if (onToolsClick) {
         onToolsClick();
       }
-    } else {
-      navigate(key);
-    }
+      } else if (key.startsWith('/player/')) {
+        // 解析路径：/player/{coursewareIndex}/{pageIndex}
+        const match = key.match(/\/player\/(\d+)\/(\d+)/);
+        if (match) {
+          const cwIndex = parseInt(match[1], 10);
+          if (cwIndex >= 0 && cwIndex < coursewares.length) {
+            setCurrentCoursewareIndex(cwIndex);
+            navigate(key);
+          }
+        } else {
+          navigate(key);
+        }
+      } else {
+        navigate(key);
+      }
   };
 
   const checkScrollButtons = () => {
@@ -88,7 +133,7 @@ const TopNav: React.FC<TopNavProps> = ({
         window.removeEventListener('resize', checkScrollButtons);
       };
     }
-  }, [courseware]);
+  }, [coursewares, currentCoursewareIndex]);
 
   const scrollLeft = () => {
     if (menuContainerRef.current) {
@@ -137,10 +182,28 @@ const TopNav: React.FC<TopNavProps> = ({
         <Menu
           mode="horizontal"
           selectedKeys={[location.pathname]}
-          items={menuItems}
+          items={menuItems.map((item, index) => ({
+            ...item,
+            className: menuItemColors.has(index) ? `courseware-menu-item-${index}` : undefined,
+          }))}
           onClick={handleMenuClick}
           style={{ lineHeight: '64px', border: 'none', minWidth: 'max-content' }}
         />
+        <style>{`
+          ${Array.from(menuItemColors.entries()).map(([index, bgColor]) => `
+            .courseware-menu-item-${index} {
+              background: ${bgColor} !important;
+            }
+            .courseware-menu-item-${index}:hover {
+              background: ${bgColor} !important;
+              opacity: 0.85;
+            }
+            .courseware-menu-item-${index}.ant-menu-item-selected {
+              background: ${bgColor} !important;
+              opacity: 1;
+            }
+          `).join('')}
+        `}</style>
       </div>
       {canScrollRight && (
         <Button

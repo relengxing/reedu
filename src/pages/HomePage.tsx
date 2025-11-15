@@ -12,16 +12,16 @@ const { Title, Paragraph } = Typography;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { setCourseware } = useCourseware();
+  const { addCourseware, coursewares, setCurrentCoursewareIndex } = useCourseware();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
 
   const handleUpload = async (file: File) => {
     try {
       const text = await file.text();
       const coursewareData = parseHTMLCourseware(text, file.name);
-      setCourseware(coursewareData);
-      message.success('课件导入成功！');
-      navigate('/catalog');
+      addCourseware(coursewareData);
+      message.success(`课件"${coursewareData.title}"导入成功！`);
+      // 不自动跳转，让用户继续选择其他课件
       return false; // 阻止默认上传行为
     } catch (error) {
       message.error('课件导入失败：' + (error as Error).message);
@@ -36,7 +36,7 @@ const HomePage: React.FC = () => {
       setFileList(fileList);
     },
     accept: '.html',
-    maxCount: 1,
+    multiple: true, // 支持多选
   };
 
   return (
@@ -58,8 +58,32 @@ const HomePage: React.FC = () => {
                     </Paragraph>
                   </div>
                   <Upload {...uploadProps}>
-                    <Button icon={<UploadOutlined />}>选择HTML文件</Button>
+                    <Button icon={<UploadOutlined />}>选择HTML文件（可多选）</Button>
                   </Upload>
+                  {coursewares.length > 0 && (
+                    <div>
+                      <Title level={5}>已导入的课件（{coursewares.length}个）：</Title>
+                      <Space direction="vertical" style={{ width: '100%' }}>
+                        {coursewares.map((cw, index) => (
+                          <Card key={index} size="small" style={{ background: '#f5f5f5' }}>
+                            <Space>
+                              <span>{index + 1}. {cw.title}</span>
+                              <Button
+                                size="small"
+                                type="link"
+                                onClick={() => {
+                                  setCurrentCoursewareIndex(index);
+                                  navigate('/catalog');
+                                }}
+                              >
+                                查看目录
+                              </Button>
+                            </Space>
+                          </Card>
+                        ))}
+                      </Space>
+                    </div>
+                  )}
                   <div>
                     <Title level={5}>课件要求：</Title>
                     <ul>
