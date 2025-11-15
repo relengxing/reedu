@@ -1,7 +1,8 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Menu, Button, Modal, List } from 'antd';
+import { Tabs, Button, Modal, List } from 'antd';
+import type { TabsProps } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, ToolOutlined, FileTextOutlined, LeftOutlined, RightOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { HomeOutlined, ToolOutlined, FileTextOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
 import ToolsModal from './ToolsModal';
 
@@ -46,284 +47,154 @@ const TopNav: React.FC<TopNavProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex } = useCourseware();
-  const menuContainerRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
-  const [menuItemColors, setMenuItemColors] = useState<Map<number, string>>(new Map());
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const { coursewares, setCurrentCoursewareIndex } = useCourseware();
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const [tabItemColors, setTabItemColors] = useState<Map<string, string>>(new Map());
   const [chaptersModalVisible, setChaptersModalVisible] = useState(false);
 
-  // 构建菜单项：首页、工具、每个课件的页面
-  const { menuItems, menuItemColors: computedColors } = useMemo(() => {
-    const items: Array<{ key: string; icon: React.ReactNode; label: string }> = [
+  // 构建 Tabs 项：首页、工具、每个课件的页面
+  const { tabItems, tabItemColors: computedColors } = useMemo(() => {
+    const items: TabsProps['items'] = [
       {
         key: '/',
-        icon: <HomeOutlined />,
-        label: '首页',
+        label: (
+          <span>
+            <HomeOutlined /> 首页
+          </span>
+        ),
       },
       {
         key: 'tools',
-        icon: <ToolOutlined />,
-        label: '工具',
+        label: (
+          <span>
+            <ToolOutlined /> 工具
+          </span>
+        ),
       },
     ];
 
-    const colorMap = new Map<number, string>();
-    let itemIndex = items.length;
+    const colorMap = new Map<string, string>();
     
-    // 为每个课件添加页面菜单项，使用不同的背景颜色
+    // 为每个课件添加页面标签，使用不同的背景颜色
     coursewares.forEach((cw, cwIndex) => {
       const bgColor = COURSEWARE_COLORS[cwIndex % COURSEWARE_COLORS.length];
       cw.pages.forEach((page) => {
+        const key = `/player/${cwIndex}/${page.index}`;
         items.push({
-          key: `/player/${cwIndex}/${page.index}`,
-          icon: <FileTextOutlined />,
-          label: page.title || `第${page.index + 1}页`,
+          key,
+          label: (
+            <span>
+              <FileTextOutlined /> {page.title || `第${page.index + 1}页`}
+            </span>
+          ),
         });
-        colorMap.set(itemIndex, bgColor);
-        itemIndex++;
+        colorMap.set(key, bgColor);
       });
     });
 
-    return { menuItems: items, menuItemColors: colorMap };
+    return { tabItems: items, tabItemColors: colorMap };
   }, [coursewares]);
 
   // 更新颜色映射状态
   useEffect(() => {
-    setMenuItemColors(computedColors);
+    setTabItemColors(computedColors);
   }, [computedColors]);
 
-  const handleMenuClick = ({ key }: { key: string }) => {
+  const handleTabChange = (key: string) => {
     if (key === 'tools') {
       if (onToolsClick) {
         onToolsClick();
       }
-      } else if (key.startsWith('/player/')) {
-        // 解析路径：/player/{coursewareIndex}/{pageIndex}
-        const match = key.match(/\/player\/(\d+)\/(\d+)/);
-        if (match) {
-          const cwIndex = parseInt(match[1], 10);
-          if (cwIndex >= 0 && cwIndex < coursewares.length) {
-            setCurrentCoursewareIndex(cwIndex);
-            navigate(key);
-          }
-        } else {
+    } else if (key.startsWith('/player/')) {
+      // 解析路径：/player/{coursewareIndex}/{pageIndex}
+      const match = key.match(/\/player\/(\d+)\/(\d+)/);
+      if (match) {
+        const cwIndex = parseInt(match[1], 10);
+        if (cwIndex >= 0 && cwIndex < coursewares.length) {
+          setCurrentCoursewareIndex(cwIndex);
           navigate(key);
         }
       } else {
         navigate(key);
       }
-  };
-
-  // 获取滚动容器
-  const getScrollContainer = () => {
-    return scrollContainerRef.current;
-  };
-
-  const checkScrollButtons = () => {
-    const scrollContainer = getScrollContainer();
-    if (scrollContainer) {
-      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
-      setCanScrollLeft(scrollLeft > 0);
-      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
+    } else {
+      navigate(key);
     }
   };
 
-  // 滚动到当前菜单项并居中
-  const scrollToCurrentItem = () => {
-    const scrollContainer = getScrollContainer();
-    if (!scrollContainer) return;
-    const selectedItem = scrollContainer.querySelector('.ant-menu-item-selected') as HTMLElement;
-    if (selectedItem) {
-      const containerRect = scrollContainer.getBoundingClientRect();
-      const itemRect = selectedItem.getBoundingClientRect();
-      const itemLeft = itemRect.left - containerRect.left + scrollContainer.scrollLeft;
-      const itemWidth = itemRect.width;
-      const containerWidth = scrollContainer.clientWidth;
-      const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2);
-      scrollContainer.scrollTo({ left: scrollPosition, behavior: 'smooth' });
+  // 滚动到当前标签并居中
+  const scrollToCurrentTab = () => {
+    if (!tabsContainerRef.current) return;
+    const selectedTab = tabsContainerRef.current.querySelector('.ant-tabs-tab-active') as HTMLElement;
+    if (selectedTab) {
+      const container = tabsContainerRef.current.querySelector('.ant-tabs-nav-list') as HTMLElement;
+      if (container) {
+        const containerRect = container.getBoundingClientRect();
+        const itemRect = selectedTab.getBoundingClientRect();
+        const itemLeft = itemRect.left - containerRect.left + container.scrollLeft;
+        const itemWidth = itemRect.width;
+        const containerWidth = container.clientWidth;
+        const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2);
+        container.scrollTo({ left: scrollPosition, behavior: 'smooth' });
+      }
     }
   };
 
-  // 当路由变化时，滚动到当前菜单项
+  // 当路由变化时，滚动到当前标签
   useEffect(() => {
     const timer = setTimeout(() => {
-      scrollToCurrentItem();
+      scrollToCurrentTab();
     }, 100);
     return () => clearTimeout(timer);
   }, [location.pathname, coursewares]);
 
-  useEffect(() => {
-    checkScrollButtons();
-    const container = menuContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScrollButtons);
-      window.addEventListener('resize', checkScrollButtons);
-      return () => {
-        container.removeEventListener('scroll', checkScrollButtons);
-        window.removeEventListener('resize', checkScrollButtons);
-      };
-    }
-  }, [coursewares, currentCoursewareIndex]);
-
-  const handleScrollLeft = () => {
-    const scrollContainer = getScrollContainer();
-    if (scrollContainer) {
-      scrollContainer.scrollBy({ left: -200, behavior: 'smooth' });
-    }
-  };
-
-  const handleScrollRight = () => {
-    const scrollContainer = getScrollContainer();
-    if (scrollContainer) {
-      scrollContainer.scrollBy({ left: 200, behavior: 'smooth' });
-    }
-  };
-
-  // 鼠标拖动滚动处理 - 参考 Tabs 的实现
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // 如果点击的是菜单项或其子元素，不启用拖动
-    const target = e.target as HTMLElement;
-    if (target.closest('.ant-menu-item') || target.closest('.ant-menu-item-icon') || target.closest('.ant-menu-title-content')) {
-      return;
-    }
-    const scrollContainer = getScrollContainer();
-    if (!scrollContainer) return;
-    setIsDragging(true);
-    setStartX(e.clientX);
-    setScrollLeft(scrollContainer.scrollLeft);
-    e.preventDefault();
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-      const scrollContainer = getScrollContainer();
-      if (!scrollContainer) return;
-      e.preventDefault();
-      const deltaX = startX - e.clientX;
-      scrollContainer.scrollLeft = scrollLeft + deltaX;
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      setStartX(0);
-      setScrollLeft(0);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, startX, scrollLeft]);
-
   return (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: '#fff', borderBottom: '1px solid #f0f0f0', height: '33px' }}>
-      {canScrollLeft && (
-        <Button
-          type="text"
-          icon={<LeftOutlined />}
-          onClick={handleScrollLeft}
-          style={{
-            position: 'absolute',
-            left: 0,
-            zIndex: 10,
-            height: '100%',
-            background: 'linear-gradient(to right, rgba(255,255,255,0.95), transparent)',
-          }}
-        />
-      )}
       <div
-        ref={menuContainerRef}
+        ref={tabsContainerRef}
         style={{
           flex: 1,
           minWidth: 0,
-          // overflow: 'hidden',
-          position: 'relative',
+          height: '100%',
         }}
       >
-        <div
-          ref={scrollContainerRef}
+        <Tabs
+          activeKey={location.pathname}
+          onChange={handleTabChange}
+          type="card"
+          size="small"
+          items={tabItems}
           style={{
-            overflowX: 'auto',
-            // overflowY: 'hidden',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-            cursor: isDragging ? 'grabbing' : 'grab',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-          }}
-          onScroll={checkScrollButtons}
-          onMouseDown={handleMouseDown}
-          onWheel={(e) => {
-            // 支持鼠标滚轮水平滚动，参考 Tabs 的实现
-            const scrollContainer = getScrollContainer();
-            if (scrollContainer) {
-              e.preventDefault();
-              scrollContainer.scrollLeft += e.deltaY;
-            }
-          }}
-        >
-          <style>{`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-          <Menu
-            mode="horizontal"
-            selectedKeys={[location.pathname]}
-            items={menuItems.map((item, index) => ({
-              ...item,
-              className: menuItemColors.has(index) ? `courseware-menu-item-${index}` : undefined,
-            }))}
-            onClick={handleMenuClick}
-            // overflowedIndicator={null}
-            style={{ 
-              lineHeight: '48px', 
-              border: 'none', 
-              minWidth: 'max-content', 
-              height: '48px',
-            }}
-          />
-        <style>{`
-          ${Array.from(menuItemColors.entries()).map(([index, bgColor]) => `
-            .courseware-menu-item-${index} {
-              background: ${bgColor} !important;
-            }
-            .courseware-menu-item-${index}:hover {
-              background: ${bgColor} !important;
-              opacity: 0.85;
-            }
-            .courseware-menu-item-${index}.ant-menu-item-selected {
-              background: ${bgColor} !important;
-              opacity: 1;
-            }
-          `).join('')}
-        `}</style>
-        </div>
-      </div>
-      {canScrollRight && (
-        <Button
-          type="text"
-          icon={<RightOutlined />}
-          onClick={handleScrollRight}
-          style={{
-            position: 'absolute',
-            right: '40px',
-            zIndex: 10,
             height: '100%',
-            background: 'linear-gradient(to left, rgba(255,255,255,0.95), transparent)',
+            margin: 0,
+          }}
+          tabBarStyle={{
+            margin: 0,
+            height: '33px',
+            border: 'none',
           }}
         />
-      )}
+        <style>{`
+          ${Array.from(tabItemColors.entries()).map(([key, bgColor]) => {
+            // 使用更通用的选择器来匹配 Tabs
+            const selector = `.ant-tabs-tab[data-node-key="${key}"], .ant-tabs-tab-btn[data-node-key="${key}"]`;
+            return `
+              ${selector} {
+                background: ${bgColor} !important;
+              }
+              ${selector}:hover {
+                background: ${bgColor} !important;
+                opacity: 0.85;
+              }
+              .ant-tabs-tab[data-node-key="${key}"].ant-tabs-tab-active,
+              .ant-tabs-tab-active ${selector} {
+                background: ${bgColor} !important;
+                opacity: 1;
+              }
+            `;
+          }).join('')}
+        `}</style>
+      </div>
       {/* 所有章节按钮 */}
       <Button
         type="text"
@@ -347,8 +218,9 @@ const TopNav: React.FC<TopNavProps> = ({
         width={600}
       >
         <List
-          dataSource={menuItems.filter(item => item.key.startsWith('/player/'))}
+          dataSource={tabItems?.filter(item => item.key && item.key.startsWith('/player/')) || []}
           renderItem={(item) => {
+            if (!item.key) return null;
             const match = item.key.match(/\/player\/(\d+)\/(\d+)/);
             if (!match) return null;
             const cwIndex = parseInt(match[1], 10);
@@ -366,7 +238,7 @@ const TopNav: React.FC<TopNavProps> = ({
                 }}
                 onClick={() => {
                   setCurrentCoursewareIndex(cwIndex);
-                  navigate(item.key);
+                  navigate(item.key!);
                   setChaptersModalVisible(false);
                 }}
               >
