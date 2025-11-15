@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { Card, Tabs, Upload, Button, message, Input, Space, Typography } from 'antd';
-import { UploadOutlined, CopyOutlined, CheckOutlined, DragOutlined } from '@ant-design/icons';
+import { Card, Tabs, Upload, Button, message, Space, Typography } from 'antd';
+import { UploadOutlined, DragOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
 import { parseHTMLCourseware } from '../utils/coursewareParser';
 import PromptGenerator from '../components/PromptGenerator';
 
-const { TextArea } = Input;
 const { Title, Paragraph } = Typography;
 
 const HomePage: React.FC = () => {
