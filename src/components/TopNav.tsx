@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Menu, Button } from 'antd';
+import { Menu, Button, Modal, List } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, ToolOutlined, FileTextOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { HomeOutlined, ToolOutlined, FileTextOutlined, LeftOutlined, RightOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
 import ToolsModal from './ToolsModal';
 
@@ -48,9 +48,14 @@ const TopNav: React.FC<TopNavProps> = ({
   const location = useLocation();
   const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex } = useCourseware();
   const menuContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [menuItemColors, setMenuItemColors] = useState<Map<number, string>>(new Map());
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [chaptersModalVisible, setChaptersModalVisible] = useState(false);
 
   // 构建菜单项：首页、工具、每个课件的页面
   const { menuItems, menuItemColors: computedColors } = useMemo(() => {
@@ -114,13 +119,43 @@ const TopNav: React.FC<TopNavProps> = ({
       }
   };
 
+  // 获取滚动容器
+  const getScrollContainer = () => {
+    return scrollContainerRef.current;
+  };
+
   const checkScrollButtons = () => {
-    if (menuContainerRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = menuContainerRef.current;
+    const scrollContainer = getScrollContainer();
+    if (scrollContainer) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
       setCanScrollLeft(scrollLeft > 0);
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 1);
     }
   };
+
+  // 滚动到当前菜单项并居中
+  const scrollToCurrentItem = () => {
+    const scrollContainer = getScrollContainer();
+    if (!scrollContainer) return;
+    const selectedItem = scrollContainer.querySelector('.ant-menu-item-selected') as HTMLElement;
+    if (selectedItem) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const itemRect = selectedItem.getBoundingClientRect();
+      const itemLeft = itemRect.left - containerRect.left + scrollContainer.scrollLeft;
+      const itemWidth = itemRect.width;
+      const containerWidth = scrollContainer.clientWidth;
+      const scrollPosition = itemLeft - (containerWidth / 2) + (itemWidth / 2);
+      scrollContainer.scrollTo({ left: scrollPosition, behavior: 'smooth' });
+    }
+  };
+
+  // 当路由变化时，滚动到当前菜单项
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToCurrentItem();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [location.pathname, coursewares]);
 
   useEffect(() => {
     checkScrollButtons();
@@ -135,25 +170,68 @@ const TopNav: React.FC<TopNavProps> = ({
     }
   }, [coursewares, currentCoursewareIndex]);
 
-  const scrollLeft = () => {
-    if (menuContainerRef.current) {
-      menuContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+  const handleScrollLeft = () => {
+    const scrollContainer = getScrollContainer();
+    if (scrollContainer) {
+      scrollContainer.scrollBy({ left: -200, behavior: 'smooth' });
     }
   };
 
-  const scrollRight = () => {
-    if (menuContainerRef.current) {
-      menuContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+  const handleScrollRight = () => {
+    const scrollContainer = getScrollContainer();
+    if (scrollContainer) {
+      scrollContainer.scrollBy({ left: 200, behavior: 'smooth' });
     }
   };
+
+  // 鼠标拖动滚动处理 - 参考 Tabs 的实现
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // 如果点击的是菜单项或其子元素，不启用拖动
+    const target = e.target as HTMLElement;
+    if (target.closest('.ant-menu-item') || target.closest('.ant-menu-item-icon') || target.closest('.ant-menu-title-content')) {
+      return;
+    }
+    const scrollContainer = getScrollContainer();
+    if (!scrollContainer) return;
+    setIsDragging(true);
+    setStartX(e.clientX);
+    setScrollLeft(scrollContainer.scrollLeft);
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const scrollContainer = getScrollContainer();
+      if (!scrollContainer) return;
+      e.preventDefault();
+      const deltaX = startX - e.clientX;
+      scrollContainer.scrollLeft = scrollLeft + deltaX;
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      setStartX(0);
+      setScrollLeft(0);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, startX, scrollLeft]);
 
   return (
-    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: '#fff', borderBottom: '1px solid #f0f0f0', height: '33px' }}>
       {canScrollLeft && (
         <Button
           type="text"
           icon={<LeftOutlined />}
-          onClick={scrollLeft}
+          onClick={handleScrollLeft}
           style={{
             position: 'absolute',
             left: 0,
@@ -167,28 +245,54 @@ const TopNav: React.FC<TopNavProps> = ({
         ref={menuContainerRef}
         style={{
           flex: 1,
-          overflowX: 'auto',
-          overflowY: 'hidden',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
+          minWidth: 0,
+          // overflow: 'hidden',
+          position: 'relative',
         }}
-        onScroll={checkScrollButtons}
       >
-        <style>{`
-          div::-webkit-scrollbar {
-            display: none;
-          }
-        `}</style>
-        <Menu
-          mode="horizontal"
-          selectedKeys={[location.pathname]}
-          items={menuItems.map((item, index) => ({
-            ...item,
-            className: menuItemColors.has(index) ? `courseware-menu-item-${index}` : undefined,
-          }))}
-          onClick={handleMenuClick}
-          style={{ lineHeight: '64px', border: 'none', minWidth: 'max-content' }}
-        />
+        <div
+          ref={scrollContainerRef}
+          style={{
+            overflowX: 'auto',
+            // overflowY: 'hidden',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+          onScroll={checkScrollButtons}
+          onMouseDown={handleMouseDown}
+          onWheel={(e) => {
+            // 支持鼠标滚轮水平滚动，参考 Tabs 的实现
+            const scrollContainer = getScrollContainer();
+            if (scrollContainer) {
+              e.preventDefault();
+              scrollContainer.scrollLeft += e.deltaY;
+            }
+          }}
+        >
+          <style>{`
+            div::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          <Menu
+            mode="horizontal"
+            selectedKeys={[location.pathname]}
+            items={menuItems.map((item, index) => ({
+              ...item,
+              className: menuItemColors.has(index) ? `courseware-menu-item-${index}` : undefined,
+            }))}
+            onClick={handleMenuClick}
+            // overflowedIndicator={null}
+            style={{ 
+              lineHeight: '48px', 
+              border: 'none', 
+              minWidth: 'max-content', 
+              height: '48px',
+            }}
+          />
         <style>{`
           ${Array.from(menuItemColors.entries()).map(([index, bgColor]) => `
             .courseware-menu-item-${index} {
@@ -204,21 +308,81 @@ const TopNav: React.FC<TopNavProps> = ({
             }
           `).join('')}
         `}</style>
+        </div>
       </div>
       {canScrollRight && (
         <Button
           type="text"
           icon={<RightOutlined />}
-          onClick={scrollRight}
+          onClick={handleScrollRight}
           style={{
             position: 'absolute',
-            right: 0,
+            right: '40px',
             zIndex: 10,
             height: '100%',
             background: 'linear-gradient(to left, rgba(255,255,255,0.95), transparent)',
           }}
         />
       )}
+      {/* 所有章节按钮 */}
+      <Button
+        type="text"
+        icon={<UnorderedListOutlined />}
+        onClick={() => setChaptersModalVisible(true)}
+        style={{
+          position: 'absolute',
+          right: 0,
+          zIndex: 10,
+          height: '100%',
+          padding: '0 12px',
+        }}
+        title="查看所有章节"
+      />
+      {/* 所有章节Modal */}
+      <Modal
+        title="所有章节"
+        open={chaptersModalVisible}
+        onCancel={() => setChaptersModalVisible(false)}
+        footer={null}
+        width={600}
+      >
+        <List
+          dataSource={menuItems.filter(item => item.key.startsWith('/player/'))}
+          renderItem={(item) => {
+            const match = item.key.match(/\/player\/(\d+)\/(\d+)/);
+            if (!match) return null;
+            const cwIndex = parseInt(match[1], 10);
+            const pageIndex = parseInt(match[2], 10);
+            const courseware = coursewares[cwIndex];
+            if (!courseware) return null;
+            const page = courseware.pages[pageIndex];
+            if (!page) return null;
+            
+            return (
+              <List.Item
+                style={{
+                  cursor: 'pointer',
+                  backgroundColor: location.pathname === item.key ? '#e6f7ff' : 'transparent',
+                }}
+                onClick={() => {
+                  setCurrentCoursewareIndex(cwIndex);
+                  navigate(item.key);
+                  setChaptersModalVisible(false);
+                }}
+              >
+                <List.Item.Meta
+                  title={
+                    <span>
+                      {courseware.title} - {page.title || `第${pageIndex + 1}页`}
+                    </span>
+                  }
+                  description={`课件 ${cwIndex + 1} / 页面 ${pageIndex + 1}`}
+                />
+              </List.Item>
+            );
+          }}
+        />
+      </Modal>
       <ToolsModal
         visible={toolsModalVisible}
         onClose={onToolsModalClose || (() => {})}

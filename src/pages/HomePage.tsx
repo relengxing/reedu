@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Tabs, Upload, Button, message, Input, Space, Typography } from 'antd';
-import { UploadOutlined, CopyOutlined, CheckOutlined } from '@ant-design/icons';
+import { UploadOutlined, CopyOutlined, CheckOutlined, DragOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
@@ -12,8 +12,10 @@ const { Title, Paragraph } = Typography;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { addCourseware, coursewares, setCurrentCoursewareIndex } = useCourseware();
+  const { addCourseware, coursewares, setCurrentCoursewareIndex, reorderCoursewares } = useCourseware();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleUpload = async (file: File) => {
     try {
@@ -65,8 +67,44 @@ const HomePage: React.FC = () => {
                       <Title level={5}>已导入的课件（{coursewares.length}个）：</Title>
                       <Space direction="vertical" style={{ width: '100%' }}>
                         {coursewares.map((cw, index) => (
-                          <Card key={index} size="small" style={{ background: '#f5f5f5' }}>
+                          <Card
+                            key={index}
+                            size="small"
+                            style={{
+                              background: '#f5f5f5',
+                              cursor: 'move',
+                              opacity: draggedIndex === index ? 0.5 : 1,
+                              border: dragOverIndex === index ? '2px dashed #1890ff' : '1px solid #d9d9d9',
+                              transition: 'all 0.2s',
+                            }}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedIndex(index);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              setDragOverIndex(index);
+                            }}
+                            onDragLeave={() => {
+                              setDragOverIndex(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedIndex !== null && draggedIndex !== index) {
+                                reorderCoursewares(draggedIndex, index);
+                              }
+                              setDraggedIndex(null);
+                              setDragOverIndex(null);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedIndex(null);
+                              setDragOverIndex(null);
+                            }}
+                          >
                             <Space>
+                              <DragOutlined style={{ color: '#999', cursor: 'grab' }} />
                               <span>{index + 1}. {cw.title}</span>
                               <Button
                                 size="small"
@@ -82,6 +120,9 @@ const HomePage: React.FC = () => {
                           </Card>
                         ))}
                       </Space>
+                      <Paragraph type="secondary" style={{ marginTop: '8px', fontSize: '12px' }}>
+                        提示：拖拽课件卡片可以调整顺序
+                      </Paragraph>
                     </div>
                   )}
                   <div>

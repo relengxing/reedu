@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
@@ -15,6 +15,41 @@ const CoursewarePlayer: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const mathRenderedRef = useRef<boolean>(false); // 标记公式是否已渲染
   const scrollUpdateTimerRef = useRef<number | null>(null); // 滚动更新防抖定时器
+
+  // 计算所有课件的总页面数和全局索引
+  const getGlobalPageInfo = useMemo(() => {
+    let totalPages = 0;
+    const pageMap: Array<{ coursewareIndex: number; pageIndex: number }> = [];
+    
+    coursewares.forEach((cw, cwIndex) => {
+      cw.pages.forEach((_, pageIdx) => {
+        pageMap.push({ coursewareIndex: cwIndex, pageIndex: pageIdx });
+        totalPages++;
+      });
+    });
+    
+    return { totalPages, pageMap };
+  }, [coursewares]);
+
+  // 获取当前页面的全局索引
+  const getCurrentGlobalIndex = useMemo(() => {
+    if (!courseware) return 0;
+    let globalIndex = 0;
+    for (let i = 0; i < currentCoursewareIndex; i++) {
+      globalIndex += coursewares[i]?.pages.length || 0;
+    }
+    globalIndex += currentIndex;
+    return globalIndex;
+  }, [coursewares, currentCoursewareIndex, currentIndex, courseware]);
+
+  // 根据全局索引获取课件和页面索引
+  const getPageByGlobalIndex = (globalIndex: number) => {
+    const { pageMap } = getGlobalPageInfo;
+    if (globalIndex < 0 || globalIndex >= pageMap.length) {
+      return null;
+    }
+    return pageMap[globalIndex];
+  };
 
   // 根据路由参数确定当前课件索引
   useEffect(() => {
@@ -390,25 +425,34 @@ const CoursewarePlayer: React.FC = () => {
   }
 
   const handlePrev = () => {
-    if (currentIndex > 0) {
-      const newIndex = currentIndex - 1;
-      setCurrentIndex(newIndex);
-      navigate(`/player/${currentCoursewareIndex}/${newIndex}`);
+    const currentGlobalIndex = getCurrentGlobalIndex;
+    if (currentGlobalIndex > 0) {
+      const prevPage = getPageByGlobalIndex(currentGlobalIndex - 1);
+      if (prevPage) {
+        setCurrentCoursewareIndex(prevPage.coursewareIndex);
+        setCurrentIndex(prevPage.pageIndex);
+        navigate(`/player/${prevPage.coursewareIndex}/${prevPage.pageIndex}`);
+      }
     }
   };
 
   const handleNext = () => {
-    if (currentIndex < courseware.pages.length - 1) {
-      const newIndex = currentIndex + 1;
-      setCurrentIndex(newIndex);
-      navigate(`/player/${currentCoursewareIndex}/${newIndex}`);
+    const currentGlobalIndex = getCurrentGlobalIndex;
+    const { totalPages } = getGlobalPageInfo;
+    if (currentGlobalIndex < totalPages - 1) {
+      const nextPage = getPageByGlobalIndex(currentGlobalIndex + 1);
+      if (nextPage) {
+        setCurrentCoursewareIndex(nextPage.coursewareIndex);
+        setCurrentIndex(nextPage.pageIndex);
+        navigate(`/player/${nextPage.coursewareIndex}/${nextPage.pageIndex}`);
+      }
     }
   };
 
   return (
     <div style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
       {/* 上一页按钮 */}
-      {currentIndex > 0 && (
+      {getCurrentGlobalIndex > 0 && (
         <Button
           type="primary"
           shape="circle"
@@ -428,7 +472,7 @@ const CoursewarePlayer: React.FC = () => {
       )}
 
       {/* 下一页按钮 */}
-      {currentIndex < courseware.pages.length - 1 && (
+      {getCurrentGlobalIndex < getGlobalPageInfo.totalPages - 1 && (
         <Button
           type="primary"
           shape="circle"
@@ -462,7 +506,12 @@ const CoursewarePlayer: React.FC = () => {
         }}
       >
         <Text style={{ color: '#fff' }}>
-          {currentIndex + 1} / {courseware.pages.length}
+          {getCurrentGlobalIndex + 1} / {getGlobalPageInfo.totalPages}
+          {coursewares.length > 1 && (
+            <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.8 }}>
+              ({courseware?.title || `课件${currentCoursewareIndex + 1}`} - 第{currentIndex + 1}页)
+            </span>
+          )}
         </Text>
       </div>
 
