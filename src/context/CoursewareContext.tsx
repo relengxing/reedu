@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { CoursewareData, CoursewareGroup } from '../types';
 import { bundledCoursewares, bundledCoursewareGroups } from '../coursewares';
+import { loadCoursewaresFromRepos, getCoursewareRepos, saveCoursewareRepos, addCoursewareRepo, removeCoursewareRepo, type CoursewareRepoConfig } from '../services/coursewareLoader';
 
 // localStorage 键名
 const STORAGE_KEY = 'reedu_coursewares';
@@ -117,11 +118,17 @@ interface CoursewareContextType {
   // 向后兼容
   courseware: CoursewareData | null;
   setCourseware: (courseware: CoursewareData | null) => void;
-  // 预编译课件资源管理
-  bundledCoursewares: CoursewareData[]; // 所有可用的预编译课件资源
-  bundledCoursewareGroups: CoursewareGroup[]; // 所有可用的预编译课件组
+  // 课件资源管理（合并编译期和外部加载的）
+  bundledCoursewares: CoursewareData[]; // 所有可用的课件资源
+  bundledCoursewareGroups: CoursewareGroup[]; // 所有可用的课件组
   addBundledCourseware: (courseware: CoursewareData) => void; // 从资源中选择课件使用
   removeBundledCourseware: (sourcePath: string) => void; // 从使用的课件中移除（但资源仍然存在）
+  // 外部仓库管理
+  loadFromRepos: (repos?: CoursewareRepoConfig[]) => Promise<void>; // 从外部仓库加载课件
+  isLoading: boolean; // 是否正在加载
+  repoConfigs: CoursewareRepoConfig[]; // 当前仓库配置列表
+  addRepo: (repo: CoursewareRepoConfig) => void; // 添加仓库
+  removeRepo: (baseUrl: string) => void; // 删除仓库
 }
 
 export const CoursewareContext = createContext<CoursewareContextType>({
@@ -138,9 +145,26 @@ export const CoursewareContext = createContext<CoursewareContextType>({
   bundledCoursewareGroups: [],
   addBundledCourseware: () => {},
   removeBundledCourseware: () => {},
+  loadFromRepos: async () => {},
+  isLoading: false,
+  repoConfigs: [],
+  addRepo: () => {},
+  removeRepo: () => {},
 });
 
 export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // 外部加载的课件和组
+  const [externalCoursewares, setExternalCoursewares] = useState<CoursewareData[]>([]);
+  const [externalGroups, setExternalGroups] = useState<CoursewareGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [repoConfigs, setRepoConfigs] = useState<CoursewareRepoConfig[]>(() => {
+    return getCoursewareRepos();
+  });
+
+  // 合并编译期和外部加载的课件
+  const allBundledCoursewares = [...bundledCoursewares, ...externalCoursewares];
+  const allBundledGroups = [...bundledCoursewareGroups, ...externalGroups];
+
   // 使用的课件列表（从预编译资源中选择的 + 用户上传的）
   // 从localStorage恢复，如果不存在则初始为空
   const [coursewares, setCoursewares] = useState<CoursewareData[]>(() => {
@@ -161,6 +185,55 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     return 0;
   });
+
+  // 从外部仓库加载课件
+  const loadFromRepos = async (repos?: CoursewareRepoConfig[]) => {
+    setIsLoading(true);
+    try {
+      const loadRepos = repos || repoConfigs;
+      if (loadRepos.length === 0) {
+        throw new Error('未配置课件仓库URL');
+      }
+
+      const { coursewares: loadedCoursewares, groups: loadedGroups } = await loadCoursewaresFromRepos(loadRepos);
+      
+      setExternalCoursewares(loadedCoursewares);
+      setExternalGroups(loadedGroups);
+      
+      console.log('[CoursewareContext] 成功从外部仓库加载课件');
+    } catch (error) {
+      console.error('[CoursewareContext] 从外部仓库加载课件失败:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 添加仓库
+  const addRepo = (repo: CoursewareRepoConfig) => {
+    addCoursewareRepo(repo);
+    const updatedRepos = getCoursewareRepos();
+    setRepoConfigs(updatedRepos);
+  };
+
+  // 删除仓库
+  const removeRepo = (baseUrl: string) => {
+    removeCoursewareRepo(baseUrl);
+    const updatedRepos = getCoursewareRepos();
+    setRepoConfigs(updatedRepos);
+  };
+
+  // 应用启动时，自动加载默认仓库
+  useEffect(() => {
+    const repos = getCoursewareRepos();
+    if (repos.length > 0) {
+      console.log('[CoursewareContext] 检测到仓库配置，自动加载课件');
+      loadFromRepos(repos).catch(error => {
+        console.error('[CoursewareContext] 自动加载失败:', error);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 当coursewares变化时，保存到localStorage
   useEffect(() => {
@@ -282,10 +355,15 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setCurrentCoursewareIndex,
         courseware,
         setCourseware,
-        bundledCoursewares,
-        bundledCoursewareGroups,
+        bundledCoursewares: allBundledCoursewares,
+        bundledCoursewareGroups: allBundledGroups,
         addBundledCourseware,
         removeBundledCourseware,
+        loadFromRepos,
+        isLoading,
+        repoConfigs,
+        addRepo,
+        removeRepo,
       }}
     >
       {children}

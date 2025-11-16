@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Tabs, Button, Modal, List } from 'antd';
 import type { TabsProps } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, ToolOutlined, FileTextOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { HomeOutlined, ToolOutlined, FileTextOutlined, UnorderedListOutlined, SettingOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
 import ToolsModal from './ToolsModal';
 
@@ -60,6 +60,14 @@ const TopNav: React.FC<TopNavProps> = ({
         label: (
           <span>
             <HomeOutlined /> 首页
+          </span>
+        ),
+      },
+      {
+        key: '/config',
+        label: (
+          <span>
+            <SettingOutlined /> 配置
           </span>
         ),
       },

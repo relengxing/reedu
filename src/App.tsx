@@ -7,6 +7,7 @@ import NavigationPage from './pages/NavigationPage';
 import CatalogPage from './pages/CatalogPage';
 import CoursewarePlayer from './pages/CoursewarePlayer';
 import CoursePage from './pages/CoursePage';
+import ConfigPage from './pages/ConfigPage';
 import CountdownDisplay from './components/CountdownDisplay';
 import CountdownEndAnimation from './components/CountdownEndAnimation';
 import RollCallAnimation from './components/RollCallAnimation';
@@ -209,6 +210,7 @@ const AppContent: React.FC = () => {
           <Routes>
             <Route path="/" element={<NavigationPage />} />
             <Route path="/home" element={<HomePage />} />
+            <Route path="/config" element={<ConfigPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/player/:coursewareIndex/:pageIndex" element={<CoursewarePlayer />} />
             <Route path="/player/:pageIndex" element={<CoursewarePlayer />} />
