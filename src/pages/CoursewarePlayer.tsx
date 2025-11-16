@@ -262,7 +262,6 @@ const CoursewarePlayer: React.FC = () => {
 
           // 公式渲染已由课件HTML中的脚本处理，框架不再处理
           // 课件HTML中包含auto-render脚本，会自动渲染公式
-          mathRenderedRef.current = true;
 
           // 设置滚动监听，更新导航栏选中状态
           const handleScroll = () => {

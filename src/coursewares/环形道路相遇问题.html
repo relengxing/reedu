@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>环形道路相遇问题</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        section {
+            width: 100%;
+            min-height: 100vh;
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+            color: #3498db;
+            text-align: center;
+        }
+        
+        p {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            max-width: 900px;
+            text-align: center;
+        }
+        
+        .problem-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            margin: 20px 0;
+        }
+        
+        .interactive-container {
+            margin: 30px 0;
+            width: 100%;
+            max-width: 900px;
+        }
+        
+        .toggle-btn {
+            padding: 15px 25px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.6rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-btn:hover {
+            background: #2980b9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+        
+        .toggle-btn::after {
+            content: "▶";
+            font-size: 1.4rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-btn.expanded::after {
+            transform: rotate(90deg);
+        }
+        
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            opacity: 0;
+        }
+        
+        .content.expanded {
+            max-height: 1000px;
+            padding: 25px;
+            margin-top: 20px;
+            opacity: 1;
+        }
+        
+        .content p {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+        
+        .solution {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f4fc;
+            border-radius: 8px;
+        }
+        
+        .solution h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+        
+        .animation-container {
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+            margin: 30px auto;
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .track {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            border: 5px dashed #7f8c8d;
+            border-radius: 50%;
+        }
+        
+        .runner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .jia {
+            background-color: #e74c3c;
+            box-shadow: 0 0 10px #e74c3c;
+        }
+        
+        .yi {
+            background-color: #2ecc71;
+            box-shadow: 0 0 10px #2ecc71;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            padding: 12px 25px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.4rem;
+            transition: all 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            background: #8e44ad;
+        }
+        
+        .equation {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .equation p {
+            font-size: 1.6rem;
+            margin-bottom: 10px;
+        }
+        
+        .step {
+            margin: 25px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .step h3 {
+            color: #e67e22;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+        
+        .conclusion {
+            background: linear-gradient(135deg, #3498db, #2c3e50);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 800px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .conclusion h2 {
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .conclusion p {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            section {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            p {
+                font-size: 1.4rem;
+            }
+            
+            .toggle-btn {
+                font-size: 1.4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section id="page1" data-section="1">
+        <h1>环形道路相遇问题</h1>
+        <div class="problem-container">
+            <p>某环形道路长 <span class="highlight">400m</span>，甲、乙两人从同一地点出发，分别以一定的速度练习长跑和骑自行车。</p>
+            <p>如果<strong>反向而行</strong>，那么他们每隔 <span class="highlight">25s</span> 相遇一次；</p>
+            <p>如果<strong>同向而行</strong>，那么每隔 <span class="highlight">80s</span> 乙就追上甲一次。</p>
+            <p>问：甲、乙两人的速度分别是多少？</p>
+        </div>
+        
+        <div class="interactive-container">
+            <button class="toggle-btn" data-target="#analysis-1">
+                <span>问题分析</span>
+            </button>
+            <div id="analysis-1" class="content">
+                <p>这是一个典型的<strong>环形跑道相遇问题</strong>，涉及两种运动情况：</p>
+                <ol>
+                    <li><strong>反向运动</strong>：两人相向而行，相遇时走过的路程之和等于跑道长度</li>
+                    <li><strong>同向运动</strong>：两人同向而行，追及时走过的路程之差等于跑道长度</li>
+                </ol>
+                <p>我们可以通过建立方程组来解决这个问题。</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="page2" data-section="2">
+        <h2>建立数学模型</h2>
+        
+        <div class="step">
+            <h3>步骤1：定义变量</h3>
+            <p>设甲的速度为 \( v_1 \) m/s，乙的速度为 \( v_2 \) m/s。</p>
+            <p>环形道路长度为 \( 400 \) m。</p>
+        </div>
+        
+        <div class="step">
+            <h3>步骤2：反向运动分析</h3>
+            <p>反向而行时，每隔 \( 25 \) s 相遇一次。</p>
+            <p>相遇时，两人走过的路程之和等于跑道长度：</p>
+            <div class="equation">
+                <p>\[ (v_1 + v_2) \times 25 = 400 \]</p>
+            </div>
+            <p>化简得：</p>
+            <div class="equation">
+                <p>\[ v_1 + v_2 = 16 \]</p>
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>步骤3：同向运动分析</h3>
+            <p>同向而行时，每隔 \( 80 \) s 乙追上甲一次。</p>
+            <p>追及时，乙比甲多跑了一圈：</p>
+            <div class="equation">
+                <p>\[ (v_2 - v_1) \times 80 = 400 \]</p>
+            </div>
+            <p>化简得：</p>
+            <div class="equation">
+                <p>\[ v_2 - v_1 = 5 \]</p>
+            </div>
+        </div>
+        
+        <div class="interactive-container">
+            <button class="toggle-btn" data-target="#system-1">
+                <span>查看方程组</span>
+            </button>
+            <div id="system-1" class="content">
+                <p>我们得到以下方程组：</p>
+                <div class="equation">
+                    <p>\[
+                    \begin{cases}
+                    v_1 + v_2 = 16 \\
+                    v_2 - v_1 = 5
+                    \end{cases}
+                    \]</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="page3" data-section="3">
+        <h2>求解方程组</h2>
+        
+        <div class="step">
+            <h3>方法1：加减消元法</h3>
+            <p>将两个方程相加：</p>
+            <div class="equation">
+                <p>\[ (v_1 + v_2) + (v_2 - v_1) = 16 + 5 \]</p>
+                <p>\[ 2v_2 = 21 \]</p>
+                <p>\[ v_2 = 10.5 \]</p>
+            </div>
+            
+            <p>将 \( v_2 = 10.5 \) 代入第一个方程：</p>
+            <div class="equation">
+                <p>\[ v_1 + 10.5 = 16 \]</p>
+                <p>\[ v_1 = 5.5 \]</p>
+            </div>
+        </div>
+        
+        <div class="step">
+            <h3>方法2：代入法</h3>
+            <p>由第二个方程得：</p>
+            <div class="equation">
+                <p>\[ v_2 = v_1 + 5 \]</p>
+            </div>
+            
+            <p>代入第一个方程：</p>
+            <div class="equation">
+                <p>\[ v_1 + (v_1 + 5) = 16 \]</p>
+                <p>\[ 2v_1 + 5 = 16 \]</p>
+                <p>\[ 2v_1 = 11 \]</p>
+                <p>\[ v_1 = 5.5 \]</p>
+            </div>
+            
+            <p>再求 \( v_2 \)：</p>
+            <div class="equation">
+                <p>\[ v_2 = 5.5 + 5 = 10.5 \]</p>
+            </div>
+        </div>
+        
+        <div class="interactive-container">
+            <button class="toggle-btn" data-target="#verification-1">
+                <span>验证答案</span>
+            </button>
+            <div id="verification-1" class="content">
+                <div class="solution">
+                    <h3>验证反向运动</h3>
+                    <p>反向而行时，相对速度为：\( 5.5 + 10.5 = 16 \) m/s</p>
+                    <p>相遇时间：\( 400 \div 16 = 25 \) s，符合题意</p>
+                </div>
+                
+                <div class="solution">
+                    <h3>验证同向运动</h3>
+                    <p>同向而行时，相对速度为：\( 10.5 - 5.5 = 5 \) m/s</p>
+                    <p>追及时间：\( 400 \div 5 = 80 \) s，符合题意</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="page4" data-section="4">
+        <h2>运动过程演示</h2>
+        
+        <div class="animation-container">
+            <div class="track"></div>
+            <div class="runner jia" id="jia-runner"></div>
+            <div class="runner yi" id="yi-runner"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="control-btn" id="reverse-btn">反向运动演示</button>
+            <button class="control-btn" id="same-btn">同向运动演示</button>
+            <button class="control-btn" id="reset-btn">重置</button>
+        </div>
+        
+        <div class="interactive-container">
+            <button class="toggle-btn" data-target="#explanation-1">
+                <span>动画说明</span>
+            </button>
+            <div id="explanation-1" class="content">
+                <p><strong>红色点</strong>代表甲（长跑），速度为 \( 5.5 \) m/s</p>
+                <p><strong>绿色点</strong>代表乙（骑自行车），速度为 \( 10.5 \) m/s</p>
+                <p>环形跑道周长为 \( 400 \) m</p>
+                <p>点击按钮观察两种运动情况下的相遇和追及过程</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="page5" data-section="5">
+        <div class="conclusion">
+            <h2>问题解答</h2>
+            <p>甲的速度为 <span class="highlight">\( 5.5 \) m/s</span></p>
+            <p>乙的速度为 <span class="highlight">\( 10.5 \) m/s</span></p>
+            <p>换算成常用单位：</p>
+            <p>甲的速度：\( 5.5 \times 3.6 = 19.8 \) km/h</p>
+            <p>乙的速度：\( 10.5 \times 3.6 = 37.8 \) km/h</p>
+        </div>
+        
+        <div class="interactive-container">
+            <button class="toggle-btn" data-target="#summary-1">
+                <span>解题总结</span>
+            </button>
+            <div id="summary-1" class="content">
+                <p>解决环形跑道相遇问题的关键：</p>
+                <ol>
+                    <li>明确两种运动情况：反向运动和同向运动</li>
+                    <li>反向运动：路程和 = 跑道长度</li>
+                    <li>同向运动：路程差 = 跑道长度</li>
+                    <li>建立方程组并求解</li>
+                    <li>验证答案是否符合题意</li>
+                </ol>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有切换按钮
+            const toggleButtons = document.querySelectorAll('.toggle-btn');
+            
+            // 为每个按钮添加点击事件
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const target = document.querySelector(targetId);
+                    
+                    if (target) {
+                        // 切换内容区域的展开/收起状态
+                        target.classList.toggle('expanded');
+                        
+                        // 更新按钮状态
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
+            
+            // 渲染数学公式
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+            
+            // 动画演示代码
+            const jiaRunner = document.getElementById('jia-runner');
+            const yiRunner = document.getElementById('yi-runner');
+            const reverseBtn = document.getElementById('reverse-btn');
+            const sameBtn = document.getElementById('same-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            let animationId = null;
+            
+            // 重置位置
+            function resetPositions() {
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                
+                jiaRunner.style.transform = 'translate(-50%, -50%)';
+                yiRunner.style.transform = 'translate(-50%, -50%)';
+            }
+            
+            // 反向运动演示
+            function reverseMotion() {
+                resetPositions();
+                
+                const trackRadius = 150; // 轨道半径
+                const centerX = 400; // 中心点X坐标
+                const centerY = 200; // 中心点Y坐标
+                
+                let time = 0;
+                
+                function animate() {
+                    time += 0.02;
+                    
+                    // 甲的位置（顺时针）
+                    const jiaAngle = time * 5.5 / trackRadius;
+                    const jiaX = centerX + trackRadius * Math.cos(jiaAngle);
+                    const jiaY = centerY + trackRadius * Math.sin(jiaAngle);
+                    
+                    // 乙的位置（逆时针）
+                    const yiAngle = -time * 10.5 / trackRadius;
+                    const yiX = centerX + trackRadius * Math.cos(yiAngle);
+                    const yiY = centerY + trackRadius * Math.sin(yiAngle);
+                    
+                    jiaRunner.style.left = jiaX + 'px';
+                    jiaRunner.style.top = jiaY + 'px';
+                    
+                    yiRunner.style.left = yiX + 'px';
+                    yiRunner.style.top = yiY + 'px';
+                    
+                    animationId = requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+            
+            // 同向运动演示
+            function sameDirectionMotion() {
+                resetPositions();
+                
+                const trackRadius = 150; // 轨道半径
+                const centerX = 400; // 中心点X坐标
+                const centerY = 200; // 中心点Y坐标
+                
+                let time = 0;
+                
+                function animate() {
+                    time += 0.02;
+                    
+                    // 甲的位置（顺时针）
+                    const jiaAngle = time * 5.5 / trackRadius;
+                    const jiaX = centerX + trackRadius * Math.cos(jiaAngle);
+                    const jiaY = centerY + trackRadius * Math.sin(jiaAngle);
+                    
+                    // 乙的位置（顺时针，但速度更快）
+                    const yiAngle = time * 10.5 / trackRadius;
+                    const yiX = centerX + trackRadius * Math.cos(yiAngle);
+                    const yiY = centerY + trackRadius * Math.sin(yiAngle);
+                    
+                    jiaRunner.style.left = jiaX + 'px';
+                    jiaRunner.style.top = jiaY + 'px';
+                    
+                    yiRunner.style.left = yiX + 'px';
+                    yiRunner.style.top = yiY + 'px';
+                    
+                    animationId = requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+            
+            // 绑定按钮事件
+            reverseBtn.addEventListener('click', reverseMotion);
+            sameBtn.addEventListener('click', sameDirectionMotion);
+            resetBtn.addEventListener('click', resetPositions);
+        });
+    </script>
+</body>
+</html>

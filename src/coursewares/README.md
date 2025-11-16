@@ -6,10 +6,12 @@
    - 将HTML课件文件放在 `src/coursewares/` 目录下
    - 文件名可以是任意名称，但必须是 `.html` 扩展名
 
-2. **自动导入（无需手动配置）**
-   - 系统会自动扫描 `src/coursewares/` 目录下的所有 `.html` 文件
-   - 使用 `import.meta.glob` 自动导入所有课件
-   - 无需手动修改代码，只需将课件文件放在目录下即可
+2. **配置课件顺序（可选但推荐）**
+   - 打开 `src/coursewares/index.ts` 文件
+   - 在 `coursewareOrder` 数组中按顺序列出课件文件名（不含 `.html` 扩展名）
+   - 例如：`['封面页', '第一课', '第二课', '练习1']`
+   - 未在列表中的课件会按文件名排序追加到末尾
+   - 如果不配置顺序，课件会按文件名自动排序
 
 3. **自动加载和跳转**
    - 应用启动时会自动加载并解析这些课件
@@ -23,10 +25,23 @@
 ## 示例
 
 假设你有以下课件文件：
-- `src/coursewares/一元二次.html`
-- `src/coursewares/几何图形.html`
+- `src/coursewares/封面页.html`
+- `src/coursewares/第一课.html`
+- `src/coursewares/第二课.html`
+- `src/coursewares/练习1.html`
 
-系统会自动扫描并导入这些文件，无需手动配置。课件内容会被内联到打包后的 JavaScript 文件中。
+在 `src/coursewares/index.ts` 中配置顺序：
+
+```typescript
+const coursewareOrder: string[] = [
+  '封面页',
+  '第一课',
+  '第二课',
+  '练习1'
+];
+```
+
+系统会自动扫描并导入这些文件，并按照 `coursewareOrder` 中指定的顺序排列。课件内容会被内联到打包后的 JavaScript 文件中。
 
 ## 注意事项
 

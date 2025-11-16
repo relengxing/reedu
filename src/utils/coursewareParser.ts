@@ -1,5 +1,12 @@
 import type { CoursewareData, Page } from '../types';
 
+// 音频路径映射（由 coursewares/index.ts 提供）
+let audioPathMap: Map<string, string> | null = null;
+
+export const setAudioPathMap = (map: Map<string, string>) => {
+  audioPathMap = map;
+};
+
 /**
  * 解析HTML课件，保留完整HTML，只提取section信息用于目录
  */
@@ -94,6 +101,20 @@ export const parseHTMLCourseware = (htmlContent: string, filename: string): Cour
   } else {
     // 使用documentElement.outerHTML获取完整HTML
     fullHTML = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  }
+  
+  // 替换音频文件路径为可访问的 URL
+  // 匹配 new Audio('./路径/文件名.mp3') 或 new Audio('路径/文件名.mp3')
+  if (audioPathMap) {
+    fullHTML = fullHTML.replace(/new\s+Audio\s*\(\s*['"](\.\/[^'"]+\.mp3)['"]\s*\)/g, (match, audioPath) => {
+      const url = audioPathMap!.get(audioPath) || audioPathMap!.get(audioPath.replace(/^\.\//, ''));
+      if (url) {
+        console.log(`[课件解析] 替换音频路径: ${audioPath} -> ${url}`);
+        return `new Audio('${url}')`;
+      }
+      console.warn(`[课件解析] 未找到音频文件: ${audioPath}`);
+      return match; // 如果找不到，保持原样
+    });
   }
   
   // 调试：检查script标签是否被保留
