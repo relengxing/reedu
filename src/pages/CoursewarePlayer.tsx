@@ -9,10 +9,11 @@ const { Text } = Typography;
 const CoursewarePlayer: React.FC = () => {
   const { coursewareIndex, pageIndex } = useParams<{ coursewareIndex?: string; pageIndex: string }>();
   const navigate = useNavigate();
-  const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex, courseware } = useCourseware();
+  const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex, courseware, isLoading, bundledCoursewareGroups } = useCourseware();
   const [currentIndex, setCurrentIndex] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const scrollUpdateTimerRef = useRef<number | null>(null); // 滚动更新防抖定时器
+  const [waitingForExternal, setWaitingForExternal] = useState(false);
 
   // 计算所有课件的总页面数和全局索引
   const getGlobalPageInfo = useMemo(() => {
@@ -52,7 +53,29 @@ const CoursewarePlayer: React.FC = () => {
   // 根据路由参数确定当前课件索引
   // 优先使用路由参数，如果路由参数不存在或无效，使用从localStorage恢复的索引
   useEffect(() => {
-    if (coursewares.length === 0) return; // 等待课件列表恢复
+    // 如果课件列表为空，且正在加载外部课件，等待加载完成
+    if (coursewares.length === 0) {
+      if (isLoading) {
+        setWaitingForExternal(true);
+        return; // 等待外部课件加载完成
+      }
+      // 如果不在加载且课件列表仍为空，可能是刷新后数据丢失
+      // 尝试等待一小段时间，让外部课件有机会加载
+      if (!waitingForExternal && bundledCoursewareGroups.length > 0) {
+        setWaitingForExternal(true);
+        // 等待最多3秒，让外部课件加载完成
+        const timeout = setTimeout(() => {
+          setWaitingForExternal(false);
+        }, 3000);
+        return () => clearTimeout(timeout);
+      }
+      return;
+    }
+    
+    // 课件列表已恢复，清除等待状态
+    if (waitingForExternal) {
+      setWaitingForExternal(false);
+    }
     
     if (coursewareIndex !== undefined) {
       const cwIndex = parseInt(coursewareIndex, 10);
@@ -80,7 +103,7 @@ const CoursewarePlayer: React.FC = () => {
         navigate(`/player/${validIndex}/${pageIndex || 0}`, { replace: true });
       }
     }
-  }, [coursewareIndex, coursewares.length, setCurrentCoursewareIndex, navigate, pageIndex]);
+  }, [coursewareIndex, coursewares.length, setCurrentCoursewareIndex, navigate, pageIndex, isLoading, waitingForExternal, bundledCoursewareGroups.length]);
 
   useEffect(() => {
     if (pageIndex && courseware) {
@@ -408,10 +431,25 @@ const CoursewarePlayer: React.FC = () => {
     }
   }, [currentIndex, courseware]);
 
+  // 如果正在等待外部课件加载，显示加载状态
+  if (waitingForExternal || (coursewares.length === 0 && isLoading)) {
+    return (
+      <div style={{ padding: '48px', textAlign: 'center' }}>
+        <Typography.Title level={3}>正在加载课件...</Typography.Title>
+        <Text type="secondary" style={{ display: 'block', marginTop: '16px' }}>
+          请稍候，正在从外部仓库加载课件
+        </Text>
+      </div>
+    );
+  }
+
   if (!courseware) {
     return (
       <div style={{ padding: '24px', textAlign: 'center' }}>
         <Typography.Title level={3}>暂无课件</Typography.Title>
+        <Text type="secondary" style={{ display: 'block', marginTop: '16px', marginBottom: '16px' }}>
+          课件列表为空，可能是刷新后数据丢失。请从首页重新选择课件。
+        </Text>
         <Button onClick={() => navigate('/')}>返回首页</Button>
       </div>
     );

@@ -24,7 +24,8 @@ interface StoredCourseware {
 }
 
 // 从localStorage恢复课件列表
-const restoreCoursewares = (): CoursewareData[] => {
+// 接受外部课件列表作为参数，用于恢复外部仓库的课件
+const restoreCoursewares = (externalCoursewares: CoursewareData[] = []): CoursewareData[] => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return [];
@@ -32,14 +33,17 @@ const restoreCoursewares = (): CoursewareData[] => {
     const storedList: StoredCourseware[] = JSON.parse(stored);
     const restored: CoursewareData[] = [];
     
+    // 合并所有可用的课件资源（编译期 + 外部加载）
+    const allAvailableCoursewares = [...bundledCoursewares, ...externalCoursewares];
+    
     for (const item of storedList) {
       if (item.isBundled && item.sourcePath) {
-        // 从预编译资源中恢复
-        const bundled = bundledCoursewares.find(cw => cw.sourcePath === item.sourcePath);
-        if (bundled) {
-          restored.push({ ...bundled });
+        // 从所有可用资源中恢复（包括编译期和外部加载的）
+        const found = allAvailableCoursewares.find(cw => cw.sourcePath === item.sourcePath);
+        if (found) {
+          restored.push({ ...found });
         } else {
-          console.warn(`[CoursewareContext] 无法找到预编译课件: ${item.sourcePath}`);
+          console.warn(`[CoursewareContext] 无法找到课件: ${item.sourcePath}，可能外部仓库尚未加载`);
         }
       } else if (item.fullHTML) {
         // 用户上传的课件，恢复完整数据
@@ -167,8 +171,9 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 使用的课件列表（从预编译资源中选择的 + 用户上传的）
   // 从localStorage恢复，如果不存在则初始为空
+  // 初始恢复时只使用编译期课件，外部课件加载后会重新恢复
   const [coursewares, setCoursewares] = useState<CoursewareData[]>(() => {
-    const restored = restoreCoursewares();
+    const restored = restoreCoursewares([]);
     return restored;
   });
   
@@ -199,6 +204,19 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       setExternalCoursewares(loadedCoursewares);
       setExternalGroups(loadedGroups);
+      
+      // 外部课件加载完成后，重新恢复课件列表（以便恢复外部仓库的课件）
+      const restored = restoreCoursewares(loadedCoursewares);
+      // 检查是否有新的课件被恢复（通过比较sourcePath）
+      const currentSourcePaths = new Set(coursewares.map(cw => cw.sourcePath).filter(Boolean));
+      const restoredSourcePaths = new Set(restored.map(cw => cw.sourcePath).filter(Boolean));
+      const hasNewCoursewares = restored.some(cw => cw.sourcePath && !currentSourcePaths.has(cw.sourcePath));
+      
+      if (hasNewCoursewares || restored.length > coursewares.length) {
+        // 如果有新的课件被恢复，更新课件列表
+        console.log(`[CoursewareContext] 外部课件加载完成，重新恢复课件列表: ${restored.length} 个（之前: ${coursewares.length} 个）`);
+        setCoursewares(restored);
+      }
       
       console.log('[CoursewareContext] 成功从外部仓库加载课件');
     } catch (error) {
