@@ -214,7 +214,9 @@ const AppContent: React.FC = () => {
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/player/:coursewareIndex/:pageIndex" element={<CoursewarePlayer />} />
             <Route path="/player/:pageIndex" element={<CoursewarePlayer />} />
-            {/* 课程URL：32位MD5字符串，放在其他路由之后，避免与固定路由冲突 */}
+            {/* 课程URL：32位MD5字符串 + 页面索引，格式：/:courseId/:pageIndex */}
+            <Route path="/:courseId/:pageIndex" element={<CoursePage />} />
+            {/* 课程URL：32位MD5字符串（无页面索引时跳转到第0页），放在其他路由之后，避免与固定路由冲突 */}
             <Route path="/:courseId" element={<CoursePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

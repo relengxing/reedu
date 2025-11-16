@@ -6,12 +6,27 @@ import { useCourseware } from '../context/CoursewareContext';
 const { Title, Text } = Typography;
 
 const CoursePage: React.FC = () => {
-  const { courseId } = useParams<{ courseId: string }>();
+  const { courseId, pageIndex } = useParams<{ courseId: string; pageIndex?: string }>();
   const navigate = useNavigate();
   const { bundledCoursewareGroups, coursewares, addBundledCourseware } = useCourseware();
   const [loading, setLoading] = useState(true);
-  const [pendingNavigation, setPendingNavigation] = useState<{ sourcePath: string } | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<{ sourcePath: string; targetPageIndex?: number } | null>(null);
   const prevCoursewaresLengthRef = useRef(coursewares.length);
+
+  // 根据课件组和全局页面索引，找到对应的课件索引和页面索引
+  const findCoursewareAndPageIndex = (group: typeof bundledCoursewareGroups[0], globalPageIndex: number) => {
+    let currentPageIndex = 0;
+    for (let cwIndex = 0; cwIndex < group.coursewares.length; cwIndex++) {
+      const cw = group.coursewares[cwIndex];
+      if (currentPageIndex + cw.pages.length > globalPageIndex) {
+        const pageIndexInCourseware = globalPageIndex - currentPageIndex;
+        return { coursewareIndex: cwIndex, pageIndex: pageIndexInCourseware };
+      }
+      currentPageIndex += cw.pages.length;
+    }
+    // 如果超出范围，返回第一个课件的第0页
+    return { coursewareIndex: 0, pageIndex: 0 };
+  };
 
   // 监听coursewares变化，当新课件添加完成后自动跳转
   useEffect(() => {
@@ -20,7 +35,8 @@ const CoursePage: React.FC = () => {
       const targetIndex = coursewares.findIndex(cw => cw.sourcePath === pendingNavigation.sourcePath);
       if (targetIndex >= 0) {
         setLoading(false);
-        navigate(`/player/${targetIndex}/0`, { replace: true });
+        const targetPageIndex = pendingNavigation.targetPageIndex ?? 0;
+        navigate(`/player/${targetIndex}/${targetPageIndex}`, { replace: true });
         setPendingNavigation(null);
       }
     }
@@ -55,15 +71,34 @@ const CoursePage: React.FC = () => {
       return;
     }
 
-    // 添加该组的所有课件到使用列表（如果还没有添加）
-    const firstCourseware = group.coursewares[0];
-    
-    // 检查第一个课件是否已经在使用列表中
-    const existingIndex = coursewares.findIndex(cw => cw.sourcePath === firstCourseware.sourcePath);
+    // 解析pageIndex（如果有）
+    const globalPageIndex = pageIndex ? parseInt(pageIndex, 10) : 0;
+    if (pageIndex && (isNaN(globalPageIndex) || globalPageIndex < 0)) {
+      console.warn(`[CoursePage] 无效的页面索引: ${pageIndex}`);
+      setLoading(false);
+      navigate(`/${courseId}/0`, { replace: true });
+      return;
+    }
+
+    // 计算该组的总页面数
+    const totalPages = group.coursewares.reduce((sum, cw) => sum + cw.pages.length, 0);
+    if (globalPageIndex >= totalPages) {
+      console.warn(`[CoursePage] 页面索引 ${globalPageIndex} 超出范围（总页面数: ${totalPages}）`);
+      setLoading(false);
+      navigate(`/${courseId}/${totalPages - 1}`, { replace: true });
+      return;
+    }
+
+    // 找到目标课件和页面
+    const { coursewareIndex: targetCwIndex, pageIndex: targetPageIndex } = findCoursewareAndPageIndex(group, globalPageIndex);
+    const targetCourseware = group.coursewares[targetCwIndex];
+
+    // 检查目标课件是否已经在使用列表中
+    const existingIndex = coursewares.findIndex(cw => cw.sourcePath === targetCourseware.sourcePath);
     if (existingIndex >= 0) {
       // 如果已存在，直接跳转
       setLoading(false);
-      navigate(`/player/${existingIndex}/0`, { replace: true });
+      navigate(`/player/${existingIndex}/${targetPageIndex}`, { replace: true });
       return;
     }
 
@@ -76,9 +111,9 @@ const CoursePage: React.FC = () => {
       }
     });
 
-    // 设置待跳转的课件，useEffect会监听状态变化并自动跳转
-    setPendingNavigation({ sourcePath: firstCourseware.sourcePath! });
-  }, [courseId, bundledCoursewareGroups, coursewares, addBundledCourseware, navigate]);
+    // 设置待跳转的课件和页面，useEffect会监听状态变化并自动跳转
+    setPendingNavigation({ sourcePath: targetCourseware.sourcePath!, targetPageIndex });
+  }, [courseId, pageIndex, bundledCoursewareGroups, coursewares, addBundledCourseware, navigate]);
 
   // 如果正在加载或跳转，显示加载状态
   if (loading) {

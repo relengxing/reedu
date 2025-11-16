@@ -122,11 +122,11 @@ const NavigationPage: React.FC = () => {
 
                 {/* 课程URL */}
                 <div style={{ marginTop: '12px' }}>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>课程链接：</Text>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>课程链接（第1页）：</Text>
                   <Input.Group compact style={{ marginTop: '4px' }}>
                     <Input
                       readOnly
-                      value={`${window.location.origin}/${group.courseId}`}
+                      value={`${window.location.origin}/${group.courseId}/0`}
                       style={{ fontSize: '11px' }}
                       prefix={<LinkOutlined />}
                     />
@@ -134,7 +134,7 @@ const NavigationPage: React.FC = () => {
                       icon={<CopyOutlined />}
                       onClick={(e) => {
                         e.stopPropagation();
-                        const url = `${window.location.origin}/${group.courseId}`;
+                        const url = `${window.location.origin}/${group.courseId}/0`;
                         navigator.clipboard.writeText(url).then(() => {
                           message.success('课程链接已复制到剪贴板');
                         }).catch(() => {

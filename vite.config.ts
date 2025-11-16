@@ -20,6 +20,10 @@ export default defineConfig({
         }
       }
     }
+  },
+  preview: {
+    // 预览模式也支持history API fallback
+    port: 4173
   }
 });
 
