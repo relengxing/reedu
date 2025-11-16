@@ -126,59 +126,84 @@ const CoursewarePlayer: React.FC = () => {
                     console.log(`[脚本执行] 开始执行脚本 ${index + 1}/${scripts.length}`);
                     
                     // 如果script中有DOMContentLoaded监听器，提取函数体直接执行
+                    // 因为使用 srcDoc 时，DOM 已经加载完成，DOMContentLoaded 不会触发
                     let finalScript = scriptContent;
                     
                     if (scriptContent.includes('DOMContentLoaded')) {
                       // 匹配: document.addEventListener('DOMContentLoaded', function() { ... });
+                      // 支持单引号和双引号，以及可能的空白字符
                       const domContentLoadedRegex = /document\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]\s*,\s*function\s*\(\s*\)\s*\{/;
                       const match = scriptContent.match(domContentLoadedRegex);
                       
-                      if (match) {
-                        // 找到函数体的开始位置
-                        const functionStart = match.index! + match[0].length;
+                      if (match && match.index !== undefined) {
+                        // 找到函数体的开始位置（在 function() { 之后）
+                        const functionStart = match.index + match[0].length;
                         let braceCount = 1; // 从第一个 { 开始计数
                         let functionEnd = -1;
+                        let inString = false;
+                        let stringChar = '';
                         
-                        // 找到匹配的结束括号
+                        // 找到匹配的结束括号，需要处理字符串中的括号
                         for (let i = functionStart; i < scriptContent.length; i++) {
-                          if (scriptContent[i] === '{') braceCount++;
-                          if (scriptContent[i] === '}') {
-                            braceCount--;
-                            if (braceCount === 0) {
-                              functionEnd = i;
-                              break;
+                          const char = scriptContent[i];
+                          const prevChar = i > 0 ? scriptContent[i - 1] : '';
+                          
+                          // 处理字符串（单引号或双引号）
+                          if (!inString && (char === '"' || char === "'")) {
+                            inString = true;
+                            stringChar = char;
+                          } else if (inString && char === stringChar && prevChar !== '\\') {
+                            inString = false;
+                            stringChar = '';
+                          }
+                          
+                          // 只有在非字符串中才计算括号
+                          if (!inString) {
+                            if (char === '{') braceCount++;
+                            if (char === '}') {
+                              braceCount--;
+                              if (braceCount === 0) {
+                                functionEnd = i;
+                                break;
+                              }
                             }
                           }
                         }
                         
                         if (functionEnd > functionStart) {
-                          // 提取函数体并立即执行
+                          // 提取函数体并立即执行（包装为 IIFE）
                           const functionBody = scriptContent.substring(functionStart, functionEnd);
                           finalScript = `(function() {${functionBody}})();`;
-                          console.log('[脚本执行] 提取并转换 DOMContentLoaded 函数体');
+                          console.log(`[脚本执行] 提取并转换 DOMContentLoaded 函数体，长度: ${functionBody.length}`);
+                          console.log(`[脚本执行] 提取的函数体前100字符: ${functionBody.substring(0, 100)}`);
+                        } else {
+                          console.warn('[脚本执行] 无法找到 DOMContentLoaded 函数体的结束位置');
+                          console.warn(`[脚本执行] 脚本内容: ${scriptContent.substring(0, 200)}`);
                         }
+                      } else {
+                        console.warn('[脚本执行] 无法匹配 DOMContentLoaded 模式');
+                        console.warn(`[脚本执行] 脚本内容: ${scriptContent.substring(0, 200)}`);
                       }
                     }
                     
-                    // 在 iframe 的 window 上下文中执行
-                    try {
-                      (iframeWin as any).eval(finalScript);
-                      console.log(`[脚本执行] 脚本 ${index + 1} 执行成功`);
-                    } catch (evalError) {
-                      console.warn(`[脚本执行] eval 失败，尝试 Function 构造函数:`, evalError);
-                      try {
-                        const func = new (iframeWin as any).Function(finalScript);
-                        func.call(iframeWin);
-                        console.log(`[脚本执行] 脚本 ${index + 1} 通过 Function 构造函数执行成功`);
-                      } catch (funcError) {
-                        console.error(`[脚本执行] Function 构造函数也失败，使用 DOM 注入:`, funcError);
-                        // 回退到 DOM 注入
-                        const newScript = iframeDoc.createElement('script');
-                        newScript.textContent = finalScript;
-                        iframeDoc.body.appendChild(newScript);
-                        console.log(`[脚本执行] 脚本 ${index + 1} 通过 DOM 注入执行`);
-                      }
-                    }
+                    // 使用 DOM 注入方式执行脚本（最可靠的方式）
+                    // 这样可以确保脚本在正确的上下文中执行，并且能正确绑定事件监听器
+                    const newScript = iframeDoc.createElement('script');
+                    newScript.textContent = finalScript;
+                    
+                    // 监听脚本加载完成
+                    newScript.onload = () => {
+                      console.log(`[脚本执行] 脚本 ${index + 1} 通过 DOM 注入执行成功`);
+                    };
+                    
+                    newScript.onerror = (error) => {
+                      console.error(`[脚本执行] 脚本 ${index + 1} 执行失败:`, error);
+                    };
+                    
+                    // 将脚本添加到 head 或 body
+                    const targetContainer = iframeDoc.head || iframeDoc.body;
+                    targetContainer.appendChild(newScript);
+                    console.log(`[脚本执行] 脚本 ${index + 1} 已注入到 DOM`);
                   }
                 } catch (e) {
                   console.error(`[脚本执行] 脚本 ${index + 1} 执行失败:`, e);
@@ -188,12 +213,34 @@ const CoursewarePlayer: React.FC = () => {
               // 所有脚本执行完成后，标记已执行
               iframeDoc.body.setAttribute('data-scripts-executed', 'true');
               console.log('[脚本执行] 所有脚本执行完成');
+              
+              // 验证展开功能是否正常工作
+              setTimeout(() => {
+                const toggleButtons = iframeDoc.querySelectorAll('.toggle-btn');
+                console.log(`[脚本执行] 验证：找到 ${toggleButtons.length} 个展开按钮`);
+                toggleButtons.forEach((btn, idx) => {
+                  const btnEl = btn as HTMLElement;
+                  const targetId = btnEl.getAttribute('data-target');
+                  console.log(`[脚本执行] 按钮 ${idx + 1}: data-target="${targetId}"`);
+                  
+                  // 检查是否有目标元素
+                  if (targetId) {
+                    const target = iframeDoc.querySelector(targetId);
+                    if (target) {
+                      console.log(`[脚本执行] 按钮 ${idx + 1} 的目标元素存在`);
+                    } else {
+                      console.warn(`[脚本执行] 按钮 ${idx + 1} 的目标元素不存在: ${targetId}`);
+                    }
+                  }
+                });
+              }, 100);
             };
             
-            // 延迟执行，确保 DOM 完全加载
+            // 延迟执行脚本，确保 DOM 完全准备好
+            // 使用 setTimeout 而不是微任务，因为需要等待所有元素都渲染完成
             setTimeout(() => {
               executeScripts().catch(console.error);
-            }, 100);
+            }, 200);
           }
 
           // 公式渲染已由课件HTML中的脚本处理，框架不再处理
