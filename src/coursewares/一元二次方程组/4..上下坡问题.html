@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小颍上下坡问题 - 数学课件</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+        }
+        
+        section {
+            width: 100%;
+            min-height: 100vh;
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-bottom: 1px solid #e1e4e8;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 15px;
+        }
+        
+        h2 {
+            font-size: 2.2rem;
+            color: #3498db;
+            margin: 25px 0 15px;
+        }
+        
+        p {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+        }
+        
+        .problem-box {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+            border-left: 6px solid #3498db;
+        }
+        
+        .highlight {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 1.3rem;
+        }
+        
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+        
+        .interactive-container {
+            margin: 30px 0;
+            width: 100%;
+        }
+        
+        .toggle-btn {
+            padding: 15px 25px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+        
+        .toggle-btn::after {
+            content: "▶";
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-btn.expanded::after {
+            transform: rotate(90deg);
+        }
+        
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            opacity: 0;
+        }
+        
+        .content.expanded {
+            max-height: 1000px;
+            padding: 25px;
+            margin-top: 20px;
+            opacity: 1;
+        }
+        
+        .content p {
+            margin-bottom: 15px;
+        }
+        
+        .content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .solution {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f4fc;
+            border-radius: 8px;
+        }
+        
+        .solution h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+        
+        .animation-container {
+            width: 100%;
+            height: 300px;
+            background: #f0f8ff;
+            border-radius: 10px;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #3498db;
+        }
+        
+        .road {
+            position: absolute;
+            width: 90%;
+            height: 20px;
+            background: #7f8c8d;
+            bottom: 50px;
+            left: 5%;
+            border-radius: 10px;
+        }
+        
+        .uphill {
+            position: absolute;
+            width: 45%;
+            height: 100px;
+            background: linear-gradient(to top right, #7f8c8d, #95a5a6);
+            bottom: 50px;
+            left: 5%;
+            border-radius: 10px 0 0 10px;
+            transform-origin: bottom left;
+            transform: skewY(5deg);
+        }
+        
+        .downhill {
+            position: absolute;
+            width: 45%;
+            height: 100px;
+            background: linear-gradient(to top left, #7f8c8d, #95a5a6);
+            bottom: 50px;
+            right: 5%;
+            border-radius: 0 10px 10px 0;
+            transform-origin: bottom right;
+            transform: skewY(-5deg);
+        }
+        
+        .runner {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #e74c3c;
+            border-radius: 50%;
+            bottom: 60px;
+            left: 5%;
+            transition: left 8s linear;
+            z-index: 10;
+        }
+        
+        .school {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #2ecc71;
+            bottom: 40px;
+            right: 5%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            z-index: 5;
+        }
+        
+        .home {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: #9b59b6;
+            bottom: 40px;
+            left: 5%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            z-index: 5;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .control-btn {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: background 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #2980b9;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .equation {
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .answer-box {
+            background: #2ecc71;
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .answer-box h2 {
+            color: white;
+            margin-bottom: 15px;
+        }
+        
+        .conclusion {
+            background: #f39c12;
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .conclusion h2 {
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            section {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            h2 {
+                font-size: 1.8rem;
+            }
+            
+            p {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section id="page1" data-section="1">
+        <div class="container">
+            <h1>小颍上下坡问题</h1>
+            
+            <div class="problem-box">
+                <h2>问题描述</h2>
+                <p>小颍家离学校1880m，其中有一段为上坡路，另一段为下坡路。</p>
+                <p>她从家跑步去学校共用了16min，已知小颍在上坡路上的平均速度是4.8km/h，在下坡路上的平均速度是12km/h。</p>
+                <p class="highlight">问：小颍上坡、下坡各用了多长时间？</p>
+            </div>
+            
+            <div class="animation-container">
+                <div class="home">家</div>
+                <div class="school">学校</div>
+                <div class="road"></div>
+                <div class="uphill"></div>
+                <div class="downhill"></div>
+                <div class="runner" id="runner"></div>
+            </div>
+            
+            <div class="controls">
+                <button class="control-btn" id="play-btn">播放动画</button>
+                <button class="control-btn" id="reset-btn">重置</button>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#hint-1">
+                    <span>解题思路提示</span>
+                </button>
+                <div id="hint-1" class="content">
+                    <p>1. 这是一个行程问题，涉及上坡和下坡两种不同速度的运动。</p>
+                    <p>2. 需要将单位统一：时间单位统一为小时，长度单位统一为千米。</p>
+                    <p>3. 设未知数：设上坡时间为 \( t \) 小时，则下坡时间为 \( \frac{16}{60} - t \) 小时。</p>
+                    <p>4. 利用总路程建立方程：上坡路程 + 下坡路程 = 总路程。</p>
+                    <p>5. 解方程求出未知数 \( t \)。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="page2" data-section="2">
+        <div class="container">
+            <h2>第一步：单位换算</h2>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <p>将已知数据中的单位统一：</p>
+                    <p>总路程：\( 1880 \text{m} = 1.88 \text{km} \)</p>
+                    <p>总时间：\( 16 \text{min} = \frac{16}{60} \text{h} = \frac{4}{15} \text{h} \)</p>
+                    <p>上坡速度：\( 4.8 \text{km/h} \)</p>
+                    <p>下坡速度：\( 12 \text{km/h} \)</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <p>设未知数：</p>
+                    <p>设上坡所用时间为 \( t \) 小时</p>
+                    <p>则下坡所用时间为 \( \frac{4}{15} - t \) 小时</p>
+                </div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#explanation-1">
+                    <span>为什么这样设未知数？</span>
+                </button>
+                <div id="explanation-1" class="content">
+                    <p>我们选择上坡时间作为未知数 \( t \)，因为：</p>
+                    <p>1. 总时间是已知的（16分钟 = 4/15小时）</p>
+                    <p>2. 上坡时间和下坡时间之和等于总时间</p>
+                    <p>3. 因此，下坡时间可以表示为总时间减去上坡时间</p>
+                    <p>这种设未知数的方法可以减少未知数的数量，简化方程。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="page3" data-section="3">
+        <div class="container">
+            <h2>第二步：建立方程</h2>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <p>根据路程公式：路程 = 速度 × 时间</p>
+                    <p>上坡路程：\( 4.8 \times t \)</p>
+                    <p>下坡路程：\( 12 \times \left( \frac{4}{15} - t \right) \)</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <p>根据题意，上坡路程与下坡路程之和等于总路程：</p>
+                    <div class="equation">
+                        \( 4.8t + 12 \left( \frac{4}{15} - t \right) = 1.88 \)
+                    </div>
+                </div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#explanation-2">
+                    <span>方程解释</span>
+                </button>
+                <div id="explanation-2" class="content">
+                    <p>这个方程表示：</p>
+                    <p>上坡路程（4.8 × 上坡时间） + 下坡路程（12 × 下坡时间） = 总路程（1.88km）</p>
+                    <p>其中下坡时间用总时间减去上坡时间表示：\( \frac{4}{15} - t \)</p>
+                    <p>这样我们就得到了一个关于未知数 \( t \) 的一元一次方程。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="page4" data-section="4">
+        <div class="container">
+            <h2>第三步：解方程</h2>
+            
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <p>展开方程：</p>
+                    <div class="equation">
+                        \( 4.8t + 12 \times \frac{4}{15} - 12t = 1.88 \)
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <p>计算常数项：</p>
+                    <div class="equation">
+                        \( 12 \times \frac{4}{15} = \frac{48}{15} = 3.2 \)
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">7</div>
+                <div class="step-content">
+                    <p>合并同类项：</p>
+                    <div class="equation">
+                        \( 4.8t - 12t + 3.2 = 1.88 \)
+                    </div>
+                    <div class="equation">
+                        \( -7.2t + 3.2 = 1.88 \)
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">8</div>
+                <div class="step-content">
+                    <p>移项求解：</p>
+                    <div class="equation">
+                        \( -7.2t = 1.88 - 3.2 \)
+                    </div>
+                    <div class="equation">
+                        \( -7.2t = -1.32 \)
+                    </div>
+                    <div class="equation">
+                        \( t = \frac{-1.32}{-7.2} = \frac{1.32}{7.2} \)
+                    </div>
+                </div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#calculation-1">
+                    <span>详细计算过程</span>
+                </button>
+                <div id="calculation-1" class="content">
+                    <p>计算 \( t = \frac{1.32}{7.2} \)：</p>
+                    <p>分子分母同时乘以100：\( t = \frac{132}{720} \)</p>
+                    <p>化简分数：分子分母同时除以12：\( t = \frac{11}{60} \)</p>
+                    <p>所以 \( t = \frac{11}{60} \) 小时</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="page5" data-section="5">
+        <div class="container">
+            <h2>第四步：得出答案</h2>
+            
+            <div class="step">
+                <div class="step-number">9</div>
+                <div class="step-content">
+                    <p>上坡时间：\( t = \frac{11}{60} \) 小时</p>
+                    <p>转换为分钟：\( \frac{11}{60} \times 60 = 11 \) 分钟</p>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">10</div>
+                <div class="step-content">
+                    <p>下坡时间：\( \frac{4}{15} - \frac{11}{60} \) 小时</p>
+                    <p>通分计算：\( \frac{16}{60} - \frac{11}{60} = \frac{5}{60} = \frac{1}{12} \) 小时</p>
+                    <p>转换为分钟：\( \frac{1}{12} \times 60 = 5 \) 分钟</p>
+                </div>
+            </div>
+            
+            <div class="answer-box">
+                <h2>最终答案</h2>
+                <p>上坡时间：<strong>11分钟</strong></p>
+                <p>下坡时间：<strong>5分钟</strong></p>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#verification">
+                    <span>验证答案</span>
+                </button>
+                <div id="verification" class="content">
+                    <p>验证总路程：</p>
+                    <p>上坡路程：\( 4.8 \text{km/h} \times \frac{11}{60} \text{h} = 0.88 \text{km} \)</p>
+                    <p>下坡路程：\( 12 \text{km/h} \times \frac{5}{60} \text{h} = 1.00 \text{km} \)</p>
+                    <p>总路程：\( 0.88 + 1.00 = 1.88 \text{km} \)，与题目一致。</p>
+                    
+                    <div class="solution">
+                        <h3>验证总时间：</h3>
+                        <p>上坡时间：11分钟</p>
+                        <p>下坡时间：5分钟</p>
+                        <p>总时间：11 + 5 = 16分钟，与题目一致。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="page6" data-section="6">
+        <div class="container">
+            <h1>总结与思考</h1>
+            
+            <div class="conclusion">
+                <h2>解题要点总结</h2>
+                <p>1. 单位统一是解决行程问题的关键第一步</p>
+                <p>2. 合理设未知数可以简化方程</p>
+                <p>3. 利用等量关系（总路程=各部分路程之和）建立方程</p>
+                <p>4. 解方程后要验证答案的合理性</p>
+            </div>
+            
+            <div class="problem-box">
+                <h2>拓展思考</h2>
+                <p>如果小颍从学校回家（先下坡后上坡），需要多长时间？</p>
+                
+                <div class="interactive-container">
+                    <button class="toggle-btn" data-target="#extension">
+                        <span>查看解答</span>
+                    </button>
+                    <div id="extension" class="content">
+                        <p>从学校回家时：</p>
+                        <p>先下坡：路程1.00km，速度12km/h，时间：\( \frac{1.00}{12} = \frac{1}{12} \)小时 = 5分钟</p>
+                        <p>后上坡：路程0.88km，速度4.8km/h，时间：\( \frac{0.88}{4.8} = \frac{11}{60} \)小时 = 11分钟</p>
+                        <p>总时间：5 + 11 = 16分钟</p>
+                        <p class="highlight">有趣的是，来回时间相同，都是16分钟！</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="animation-container">
+                <div class="home">学校</div>
+                <div class="school">家</div>
+                <div class="road"></div>
+                <div class="uphill"></div>
+                <div class="downhill"></div>
+                <div class="runner" id="runner2"></div>
+            </div>
+            
+            <div class="controls">
+                <button class="control-btn" id="play-btn2">播放返程动画</button>
+                <button class="control-btn" id="reset-btn2">重置</button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 处理展开/收起功能
+            const toggleButtons = document.querySelectorAll('.toggle-btn');
+            
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const target = document.querySelector(targetId);
+                    
+                    if (target) {
+                        target.classList.toggle('expanded');
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
+            
+            // 动画功能
+            const runner = document.getElementById('runner');
+            const playBtn = document.getElementById('play-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            playBtn.addEventListener('click', function() {
+                runner.style.transition = 'left 8s linear';
+                runner.style.left = '95%';
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                runner.style.transition = 'left 0.5s ease';
+                runner.style.left = '5%';
+            });
+            
+            // 返程动画
+            const runner2 = document.getElementById('runner2');
+            const playBtn2 = document.getElementById('play-btn2');
+            const resetBtn2 = document.getElementById('reset-btn2');
+            
+            playBtn2.addEventListener('click', function() {
+                runner2.style.transition = 'left 8s linear';
+                runner2.style.left = '5%';
+            });
+            
+            resetBtn2.addEventListener('click', function() {
+                runner2.style.transition = 'left 0.5s ease';
+                runner2.style.left = '95%';
+            });
+            
+            // 渲染数学公式
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        });
+    </script>
+</body>
+</html>

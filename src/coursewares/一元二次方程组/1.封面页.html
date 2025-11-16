@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学教材封面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", "SimHei", sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            /* padding: 50px; */
+
+        }
+        
+        section {
+            width: 100%;
+            min-height: 100vh;
+            /* padding: 20px; */
+            box-sizing: border-box;
+        }
+        
+        .cover-container {
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a5fb4 0%, #3584e4 100%);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            padding: 40px;
+        }
+        
+        .cover-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect x="0" y="0" width="100" height="100" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/><circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/><line x1="0" y1="0" x2="100" y2="100" stroke="rgba(255,255,255,0.1)" stroke-width="2"/><line x1="100" y1="0" x2="0" y2="100" stroke="rgba(255,255,255,0.1)" stroke-width="2"/></svg>');
+            opacity: 0.3;
+        }
+        
+        .cover-title {
+            font-size: 3.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cover-subtitle {
+            font-size: 1.8rem;
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .cover-info {
+            width: 30%;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(5px);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-item {
+            display: flex;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .info-label {
+            width: 120px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .info-content {
+            flex-grow: 1;
+        }
+        
+        .math-elements {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            padding: 0 50px 30px;
+        }
+        
+        .math-element {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            transform: rotate(45deg);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .math-element:nth-child(2) {
+            transform: rotate(-15deg);
+        }
+        
+        .math-element:nth-child(3) {
+            transform: rotate(15deg);
+        }
+        
+        .publisher {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 1rem;
+            opacity: 0.8;
+            z-index: 1;
+        }
+        
+        @media (max-width: 768px) {
+            .cover-title {
+                font-size: 2.5rem;
+            }
+            
+            .cover-subtitle {
+                font-size: 1.4rem;
+            }
+            
+            .info-item {
+                font-size: 1rem;
+            }
+            
+            .math-element {
+                width: 60px;
+                height: 60px;
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <section id="cover" data-section="0">
+        <div class="cover-container">
+            <h1 class="cover-title">二元一次方程组-行程问题</h1>
+            <h2 class="cover-subtitle">数学教材</h2>
+            
+            <div class="cover-info">
+                <div class="info-item">
+                    <div class="info-label">教材版本：</div>
+                    <div class="info-content">北师大版（2024）</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">学科：</div>
+                    <div class="info-content">数学</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">年级：</div>
+                    <div class="info-content">八年级</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">教师姓名：</div>
+                    <div class="info-content">刘如芳</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">所在单位：</div>
+                    <div class="info-content">海旺学校</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">日期：</div>
+                    <div class="info-content">2025年11月15日</div>
+                </div>
+            </div>
+            
+            <div class="math-elements">
+                <div class="math-element">x+y</div>
+                <div class="math-element">=</div>
+                <div class="math-element">10</div>
+            </div>
+            
+            <div class="publisher">海旺学校 数学教研组</div>
+        </div>
+    </section>
+</body>
+</html>

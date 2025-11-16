@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公路行程问题课堂练习</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        section {
+            width: 100%;
+            min-height: 100vh;
+            padding: 40px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: white;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 2.2rem;
+            color: #3498db;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        h3 {
+            font-size: 1.8rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        p {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+        
+        .problem-box {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 25px 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 6px solid #3498db;
+        }
+        
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .input-label {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            min-width: 200px;
+        }
+        
+        .math-input {
+            font-size: 1.5rem;
+            padding: 12px 15px;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            width: 120px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+        
+        .math-input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        
+        .unit {
+            font-size: 1.5rem;
+            margin-left: 10px;
+        }
+        
+        .interactive-container {
+            margin: 30px 0;
+            width: 100%;
+        }
+        
+        .toggle-btn {
+            padding: 15px 25px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+        
+        .toggle-btn::after {
+            content: "▶";
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-btn.expanded::after {
+            transform: rotate(90deg);
+        }
+        
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            opacity: 0;
+        }
+        
+        .content.expanded {
+            max-height: 1000px;
+            padding: 25px;
+            margin-top: 20px;
+            opacity: 1;
+        }
+        
+        .content p {
+            margin-bottom: 15px;
+        }
+        
+        .content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+        
+        .solution {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f4fc;
+            border-radius: 8px;
+        }
+        
+        .solution h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .step {
+            margin-bottom: 20px;
+            padding-left: 20px;
+            border-left: 3px solid #3498db;
+        }
+        
+        .step-title {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        
+        .formula {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: 'Times New Roman', serif;
+            font-size: 1.4rem;
+        }
+        
+        .check-btn {
+            padding: 12px 25px;
+            background: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.4rem;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .check-btn:hover {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+        
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 1.4rem;
+            display: none;
+        }
+        
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        
+        .summary {
+            background-color: #e8f4fc;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            section {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2.2rem;
+            }
+            
+            h2 {
+                font-size: 1.8rem;
+            }
+            
+            p, .input-label, .math-input, .unit {
+                font-size: 1.2rem;
+            }
+            
+            .toggle-btn {
+                font-size: 1.2rem;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面页 -->
+    <section id="page1" data-section="1">
+        <div class="container">
+            <h1>公路行程问题课堂练习</h1>
+            <div class="problem-box">
+                <h2>题目</h2>
+                <p>由甲地到乙地的公路全程为 <span class="highlight">200 km</span>，其中一段为高速公路，其余路段均为普通公路。</p>
+                <p>已知汽车在普通公路和高速公路上的行驶速度分别是 <span class="highlight">60 km/h</span> 和 <span class="highlight">100 km/h</span>，从甲地到乙地用时 <span class="highlight">3 h</span>。</p>
+                <p>问：汽车在普通公路和高速公路上分别行驶了多少千米？</p>
+            </div>
+            <p>请完成下面的填空题，并查看解析验证你的答案。</p>
+        </div>
+    </section>
+
+    <!-- 问题分析页 -->
+    <section id="page2" data-section="2">
+        <div class="container">
+            <h2>问题分析</h2>
+            <div class="problem-box">
+                <p>这是一个典型的行程问题，我们需要找出汽车在普通公路和高速公路上分别行驶的距离。</p>
+                <p>已知条件：</p>
+                <ul style="font-size: 1.5rem; margin-left: 30px; margin-bottom: 20px;">
+                    <li>总路程：200 km</li>
+                    <li>总时间：3 h</li>
+                    <li>普通公路速度：60 km/h</li>
+                    <li>高速公路速度：100 km/h</li>
+                </ul>
+                <p>我们可以设未知数，建立方程来求解。</p>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#analysis-1">
+                    <span>查看问题分析思路</span>
+                </button>
+                <div id="analysis-1" class="content">
+                    <p>解决这类问题的关键是理解：<strong>总时间 = 普通公路时间 + 高速公路时间</strong></p>
+                    <div class="step">
+                        <p class="step-title">步骤1：设未知数</p>
+                        <p>设汽车在普通公路上行驶了 \( x \) km，在高速公路上行驶了 \( y \) km。</p>
+                    </div>
+                    <div class="step">
+                        <p class="step-title">步骤2：建立方程</p>
+                        <p>根据总路程：\( x + y = 200 \)</p>
+                        <p>根据总时间：\( \frac{x}{60} + \frac{y}{100} = 3 \)</p>
+                    </div>
+                    <div class="step">
+                        <p class="step-title">步骤3：解方程组</p>
+                        <p>我们可以使用代入法或消元法来解这个方程组。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 填空题页 -->
+    <section id="page3" data-section="3">
+        <div class="container">
+            <h2>课堂练习</h2>
+            <div class="problem-box">
+                <p>请填写汽车在普通公路和高速公路上分别行驶的距离：</p>
+                
+                <div class="input-group">
+                    <span class="input-label">普通公路行驶距离：</span>
+                    <input type="number" id="normal-road" class="math-input" min="0" max="200">
+                    <span class="unit">km</span>
+                </div>
+                
+                <div class="input-group">
+                    <span class="input-label">高速公路行驶距离：</span>
+                    <input type="number" id="highway" class="math-input" min="0" max="200">
+                    <span class="unit">km</span>
+                </div>
+                
+                <button class="check-btn" id="check-answer">检查答案</button>
+                
+                <div id="result" class="result"></div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#hint-1">
+                    <span>需要提示？</span>
+                </button>
+                <div id="hint-1" class="content">
+                    <p><strong>提示：</strong>尝试设普通公路行驶距离为 \( x \) km，则高速公路行驶距离为 \( 200 - x \) km。</p>
+                    <p>然后根据总时间建立方程：\( \frac{x}{60} + \frac{200 - x}{100} = 3 \)</p>
+                    <p>解这个方程求出 \( x \) 的值。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 解析页 -->
+    <section id="page4" data-section="4">
+        <div class="container">
+            <h2>问题解析</h2>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#solution-1">
+                    <span>查看完整解析</span>
+                </button>
+                <div id="solution-1" class="content">
+                    <div class="step">
+                        <p class="step-title">解法一：设一个未知数</p>
+                        <p>设汽车在普通公路上行驶了 \( x \) km，则在高速公路上行驶了 \( 200 - x \) km。</p>
+                        <p>根据总时间建立方程：</p>
+                        <div class="formula">
+                            \( \frac{x}{60} + \frac{200 - x}{100} = 3 \)
+                        </div>
+                        <p>解方程：</p>
+                        <div class="formula">
+                            \( \frac{5x}{300} + \frac{3(200 - x)}{300} = 3 \)
+                        </div>
+                        <div class="formula">
+                            \( \frac{5x + 600 - 3x}{300} = 3 \)
+                        </div>
+                        <div class="formula">
+                            \( \frac{2x + 600}{300} = 3 \)
+                        </div>
+                        <div class="formula">
+                            \( 2x + 600 = 900 \)
+                        </div>
+                        <div class="formula">
+                            \( 2x = 300 \)
+                        </div>
+                        <div class="formula">
+                            \( x = 150 \)
+                        </div>
+                        <p>所以，普通公路行驶距离为 150 km，高速公路行驶距离为 \( 200 - 150 = 50 \) km。</p>
+                    </div>
+                    
+                    <div class="step">
+                        <p class="step-title">解法二：设两个未知数</p>
+                        <p>设汽车在普通公路上行驶了 \( x \) km，在高速公路上行驶了 \( y \) km。</p>
+                        <p>建立方程组：</p>
+                        <div class="formula">
+                            \( \begin{cases} x + y = 200 \\ \frac{x}{60} + \frac{y}{100} = 3 \end{cases} \)
+                        </div>
+                        <p>由第一个方程得 \( y = 200 - x \)，代入第二个方程：</p>
+                        <div class="formula">
+                            \( \frac{x}{60} + \frac{200 - x}{100} = 3 \)
+                        </div>
+                        <p>解方程得到 \( x = 150 \)，然后 \( y = 200 - 150 = 50 \)。</p>
+                    </div>
+                    
+                    <div class="solution">
+                        <h3>答案验证</h3>
+                        <p>普通公路行驶时间：\( \frac{150}{60} = 2.5 \) h</p>
+                        <p>高速公路行驶时间：\( \frac{50}{100} = 0.5 \) h</p>
+                        <p>总时间：\( 2.5 + 0.5 = 3 \) h，与题目条件一致。</p>
+                        <p>总路程：\( 150 + 50 = 200 \) km，与题目条件一致。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 总结页 -->
+    <section id="page5" data-section="5">
+        <div class="container">
+            <h2>总结与反思</h2>
+            
+            <div class="summary">
+                <h3>本问题的关键点：</h3>
+                <ul style="font-size: 1.5rem; margin-left: 30px;">
+                    <li>理解行程问题的基本关系：路程 = 速度 × 时间</li>
+                    <li>掌握建立方程解决实际问题的方法</li>
+                    <li>学会验证答案的正确性</li>
+                </ul>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#reflection-1">
+                    <span>思考与拓展</span>
+                </button>
+                <div id="reflection-1" class="content">
+                    <p>1. 如果总时间变为2.5小时，其他条件不变，结果会如何变化？</p>
+                    <p>2. 如果普通公路速度变为70 km/h，高速公路速度变为120 km/h，结果会如何变化？</p>
+                    <p>3. 尝试用图表法表示这个问题，看看能否从图表中直观地找到答案。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有切换按钮
+            const toggleButtons = document.querySelectorAll('.toggle-btn');
+            
+            // 为每个按钮添加点击事件
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const target = document.querySelector(targetId);
+                    
+                    if (target) {
+                        // 切换内容区域的展开/收起状态
+                        target.classList.toggle('expanded');
+                        
+                        // 更新按钮状态
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
+            
+            // 检查答案按钮
+            const checkButton = document.getElementById('check-answer');
+            const normalRoadInput = document.getElementById('normal-road');
+            const highwayInput = document.getElementById('highway');
+            const resultDiv = document.getElementById('result');
+            
+            if (checkButton) {
+                checkButton.addEventListener('click', function() {
+                    const normalRoad = parseInt(normalRoadInput.value);
+                    const highway = parseInt(highwayInput.value);
+                    
+                    if (isNaN(normalRoad) || isNaN(highway)) {
+                        resultDiv.textContent = "请输入有效的数值！";
+                        resultDiv.className = "result incorrect";
+                        resultDiv.style.display = "block";
+                        return;
+                    }
+                    
+                    if (normalRoad + highway !== 200) {
+                        resultDiv.innerHTML = "总路程不正确！普通公路和高速公路行驶距离之和应为 200 km。";
+                        resultDiv.className = "result incorrect";
+                        resultDiv.style.display = "block";
+                        return;
+                    }
+                    
+                    const time = normalRoad / 60 + highway / 100;
+                    
+                    if (Math.abs(time - 3) < 0.01) {
+                        resultDiv.innerHTML = "恭喜！答案正确！<br>普通公路行驶距离：150 km，高速公路行驶距离：50 km";
+                        resultDiv.className = "result correct";
+                    } else {
+                        resultDiv.innerHTML = "答案不正确！总时间不符合条件。<br>请重新计算或查看解析。";
+                        resultDiv.className = "result incorrect";
+                    }
+                    
+                    resultDiv.style.display = "block";
+                });
+            }
+            
+            // 渲染数学公式
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        });
+    </script>
+</body>
+</html>

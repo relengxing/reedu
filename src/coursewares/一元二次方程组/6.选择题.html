@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛跑问题课堂练习</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Arial', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        section {
+            width: 100%;
+            min-height: 100vh;
+            padding: 40px 60px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+        }
+        
+        .content-container {
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 25px;
+            color: #3498db;
+            text-align: center;
+        }
+        
+        h3 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        p {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+        
+        .question {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 6px solid #3498db;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .option {
+            background-color: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            font-size: 1.6rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            border-color: #3498db;
+        }
+        
+        .option.selected {
+            background-color: #e8f4fc;
+            border-color: #3498db;
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
+        }
+        
+        .interactive-container {
+            margin: 30px 0;
+            width: 100%;
+        }
+        
+        .toggle-btn {
+            padding: 18px 25px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.8rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .toggle-btn:hover {
+            background: #2980b9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .toggle-btn:active {
+            transform: translateY(0);
+        }
+        
+        .toggle-btn::after {
+            content: "▶";
+            font-size: 1.6rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .toggle-btn.expanded::after {
+            transform: rotate(90deg);
+        }
+        
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            opacity: 0;
+        }
+        
+        .content.expanded {
+            max-height: 1000px;
+            padding: 25px;
+            margin-top: 20px;
+            opacity: 1;
+        }
+        
+        .content p {
+            margin-bottom: 15px;
+        }
+        
+        .content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+        
+        .solution {
+            margin-top: 20px;
+            padding: 20px;
+            background: #e8f4fc;
+            border-radius: 8px;
+        }
+        
+        .solution h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .explanation {
+            margin-top: 30px;
+            padding: 25px;
+            background-color: #e8f4fc;
+            border-radius: 12px;
+        }
+        
+        .step {
+            margin-bottom: 20px;
+            padding-left: 20px;
+            border-left: 3px solid #3498db;
+        }
+        
+        .step-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+        }
+        
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+        
+        .incorrect {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        
+        .page-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 1.4rem;
+            color: #7f8c8d;
+        }
+        
+        @media (max-width: 768px) {
+            section {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            h2 {
+                font-size: 2rem;
+            }
+            
+            p {
+                font-size: 1.5rem;
+            }
+            
+            .options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 封面页 -->
+    <section id="page1" data-section="1">
+        <div class="content-container">
+            <h1>赛跑问题课堂练习</h1>
+            <div class="question">
+                <p>小明和小亮练习赛跑，如果小明让小亮先跑2秒，那么小明跑6秒就追上小亮；如果小明让小亮先跑16米，那么小明跑8秒就追上小亮．设小明每秒跑的路程为x米，小亮每秒跑的路程为y米，则根据题意可列方程组为（   ）</p>
+            </div>
+            <p style="text-align: center; margin-top: 30px;">请选择正确答案</p>
+            <div class="page-indicator">第 1 页</div>
+        </div>
+    </section>
+    
+    <!-- 选择题页面 -->
+    <section id="page2" data-section="2">
+        <div class="content-container">
+            <h2>请选择正确的方程组</h2>
+            <div class="options">
+                <div class="option" data-value="A">
+                    A. 
+                    \[
+                    \begin{cases}
+                    6x = 8y \\
+                    8x = 8y + 16
+                    \end{cases}
+                    \]
+                </div>
+                <div class="option" data-value="B">
+                    B. 
+                    \[
+                    \begin{cases}
+                    6x = 8y \\
+                    8x = 16y + 16
+                    \end{cases}
+                    \]
+                </div>
+                <div class="option" data-value="C">
+                    C. 
+                    \[
+                    \begin{cases}
+                    6x = 6y + 2y \\
+                    8x = 8y + 16
+                    \end{cases}
+                    \]
+                </div>
+                <div class="option" data-value="D">
+                    D. 
+                    \[
+                    \begin{cases}
+                    6x = 8y \\
+                    8x = 16y
+                    \end{cases}
+                    \]
+                </div>
+            </div>
+            
+            <div class="feedback correct" id="correct-feedback">
+                回答正确！请点击下方按钮查看解析。
+            </div>
+            
+            <div class="feedback incorrect" id="incorrect-feedback">
+                回答错误，请再思考一下。
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#answer-1">
+                    <span>查看解析</span>
+                </button>
+                <div id="answer-1" class="content">
+                    <p><strong>解析：</strong>正确答案是C。</p>
+                    
+                    <div class="solution">
+                        <h3>解题思路</h3>
+                        <div class="step">
+                            <div class="step-title">第一种情况分析：</div>
+                            <p>小明让小亮先跑2秒，然后小明跑6秒追上小亮。</p>
+                            <p>小亮总共跑了 \(2 + 6 = 8\) 秒，小明跑了6秒。</p>
+                            <p>因为追上时两人跑的路程相等，所以：</p>
+                            <p>\(6x = 8y\)</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">第二种情况分析：</div>
+                            <p>小明让小亮先跑16米，然后小明跑8秒追上小亮。</p>
+                            <p>小亮先跑16米，然后两人同时跑8秒。</p>
+                            <p>追上时两人跑的路程相等，所以：</p>
+                            <p>\(8x = 8y + 16\)</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">综合两种情况：</div>
+                            <p>得到方程组：</p>
+                            \[
+                            \begin{cases}
+                            6x = 8y \\
+                            8x = 8y + 16
+                            \end{cases}
+                            \]
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="page-indicator">第 2 页</div>
+        </div>
+    </section>
+    
+    <!-- 详细解析页面 -->
+    <section id="page3" data-section="3">
+        <div class="content-container">
+            <h2>详细解析</h2>
+            
+            <div class="explanation">
+                <h3>问题分析</h3>
+                <p>这是一个关于追及问题的应用题，需要根据题意建立方程组。</p>
+                
+                <div class="step">
+                    <div class="step-title">第一种情况：时间领先</div>
+                    <p>小明让小亮先跑2秒，然后小明跑6秒追上小亮。</p>
+                    <p>设小明每秒跑x米，小亮每秒跑y米。</p>
+                    <p>小亮总共跑了 \(2 + 6 = 8\) 秒，小明跑了6秒。</p>
+                    <p>因为追上时两人跑的路程相等，所以：</p>
+                    <p>\(6x = 8y\)</p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">第二种情况：距离领先</div>
+                    <p>小明让小亮先跑16米，然后小明跑8秒追上小亮。</p>
+                    <p>小亮先跑16米，然后两人同时跑8秒。</p>
+                    <p>追上时两人跑的路程相等，所以：</p>
+                    <p>\(8x = 8y + 16\)</p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">建立方程组</div>
+                    <p>综合两种情况，得到方程组：</p>
+                    \[
+                    \begin{cases}
+                    6x = 8y \\
+                    8x = 8y + 16
+                    \end{cases}
+                    \]
+                </div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#answer-2">
+                    <span>查看解题步骤</span>
+                </button>
+                <div id="answer-2" class="content">
+                    <div class="solution">
+                        <h3>解题步骤</h3>
+                        
+                        <div class="step">
+                            <div class="step-title">步骤1：解方程组</div>
+                            <p>由第一个方程 \(6x = 8y\) 得：</p>
+                            <p>\(x = \frac{4}{3}y\)</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">步骤2：代入第二个方程</div>
+                            <p>将 \(x = \frac{4}{3}y\) 代入 \(8x = 8y + 16\)：</p>
+                            <p>\(8 \times \frac{4}{3}y = 8y + 16\)</p>
+                            <p>\(\frac{32}{3}y = 8y + 16\)</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">步骤3：求解y</div>
+                            <p>\(\frac{32}{3}y - 8y = 16\)</p>
+                            <p>\(\frac{32}{3}y - \frac{24}{3}y = 16\)</p>
+                            <p>\(\frac{8}{3}y = 16\)</p>
+                            <p>\(y = 16 \times \frac{3}{8} = 6\)</p>
+                            <p>所以小亮每秒跑6米。</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">步骤4：求解x</div>
+                            <p>\(x = \frac{4}{3} \times 6 = 8\)</p>
+                            <p>所以小明每秒跑8米。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="page-indicator">第 3 页</div>
+        </div>
+    </section>
+    
+    <!-- 总结页面 -->
+    <section id="page4" data-section="4">
+        <div class="content-container">
+            <h2>课堂总结</h2>
+            
+            <div class="explanation">
+                <h3>知识点回顾</h3>
+                
+                <div class="step">
+                    <div class="step-title">追及问题</div>
+                    <p>追及问题的核心是：当追及发生时，两者经过的路程相等。</p>
+                    <p>路程 = 速度 × 时间</p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">建立方程的关键</div>
+                    <p>1. 确定追及发生时两者的路程关系</p>
+                    <p>2. 注意时间或距离的领先条件</p>
+                    <p>3. 根据题意建立等量关系</p>
+                </div>
+                
+                <div class="step">
+                    <div class="step-title">本题要点</div>
+                    <p>第一种情况：时间领先 → 小亮多跑2秒</p>
+                    <p>第二种情况：距离领先 → 小亮先跑16米</p>
+                    <p>两种情况下，追及时两人的路程相等</p>
+                </div>
+            </div>
+            
+            <div class="interactive-container">
+                <button class="toggle-btn" data-target="#answer-3">
+                    <span>查看类似题目</span>
+                </button>
+                <div id="answer-3" class="content">
+                    <div class="solution">
+                        <h3>类似题目练习</h3>
+                        
+                        <div class="step">
+                            <div class="step-title">题目1</div>
+                            <p>甲、乙两人从同一地点出发，甲先走10分钟，乙再出发。如果乙的速度是甲的1.5倍，那么乙需要多少分钟才能追上甲？</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">题目2</div>
+                            <p>两辆汽车从A、B两地同时出发相向而行，相遇后继续前进。当第二辆车到达A地时，第一辆车离B地还有35公里；当第一辆车到达B地时，第二辆车离A地还有70公里。求A、B两地之间的距离。</p>
+                        </div>
+                        
+                        <div class="step">
+                            <div class="step-title">题目3</div>
+                            <p>甲、乙两人在环形跑道上跑步，甲每秒跑5米，乙每秒跑4.5米。如果他们从同一点同时出发，反向而行，那么他们每40秒相遇一次。求跑道的周长。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="page-indicator">第 4 页</div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取所有切换按钮
+            const toggleButtons = document.querySelectorAll('.toggle-btn');
+            
+            // 为每个按钮添加点击事件
+            toggleButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetId = this.getAttribute('data-target');
+                    const target = document.querySelector(targetId);
+                    
+                    if (target) {
+                        // 切换内容区域的展开/收起状态
+                        target.classList.toggle('expanded');
+                        
+                        // 更新按钮状态
+                        this.classList.toggle('expanded');
+                    }
+                });
+            });
+            
+            // 选择题交互
+            const options = document.querySelectorAll('.option');
+            const correctFeedback = document.getElementById('correct-feedback');
+            const incorrectFeedback = document.getElementById('incorrect-feedback');
+            
+            options.forEach(option => {
+                option.addEventListener('click', function() {
+                    // 移除所有选项的选中状态
+                    options.forEach(opt => opt.classList.remove('selected'));
+                    
+                    // 添加当前选项的选中状态
+                    this.classList.add('selected');
+                    
+                    // 检查答案
+                    const selectedValue = this.getAttribute('data-value');
+                    
+                    if (selectedValue === 'C') {
+                        correctFeedback.style.display = 'block';
+                        incorrectFeedback.style.display = 'none';
+                    } else {
+                        correctFeedback.style.display = 'none';
+                        incorrectFeedback.style.display = 'block';
+                    }
+                });
+            });
+            
+            // 渲染数学公式
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        });
+    </script>
+</body>
+</html>
