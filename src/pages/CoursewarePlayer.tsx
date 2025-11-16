@@ -50,23 +50,53 @@ const CoursewarePlayer: React.FC = () => {
   };
 
   // 根据路由参数确定当前课件索引
+  // 优先使用路由参数，如果路由参数不存在或无效，使用从localStorage恢复的索引
   useEffect(() => {
+    if (coursewares.length === 0) return; // 等待课件列表恢复
+    
     if (coursewareIndex !== undefined) {
       const cwIndex = parseInt(coursewareIndex, 10);
       if (!isNaN(cwIndex) && cwIndex >= 0 && cwIndex < coursewares.length) {
-        setCurrentCoursewareIndex(cwIndex);
+        // 路由参数有效，使用路由参数
+        if (cwIndex !== currentCoursewareIndex) {
+          setCurrentCoursewareIndex(cwIndex);
+        }
+      } else {
+        // 路由参数无效，使用恢复的索引或默认值0
+        const validIndex = currentCoursewareIndex < coursewares.length 
+          ? currentCoursewareIndex 
+          : 0;
+        setCurrentCoursewareIndex(validIndex);
+        // 更新URL以匹配有效的索引
+        navigate(`/player/${validIndex}/${pageIndex || 0}`, { replace: true });
+      }
+    } else {
+      // 如果没有路由参数，使用恢复的索引，并更新URL
+      const validIndex = currentCoursewareIndex < coursewares.length 
+        ? currentCoursewareIndex 
+        : 0;
+      if (validIndex >= 0 && coursewares[validIndex]) {
+        setCurrentCoursewareIndex(validIndex);
+        navigate(`/player/${validIndex}/${pageIndex || 0}`, { replace: true });
       }
     }
-  }, [coursewareIndex, coursewares.length, setCurrentCoursewareIndex]);
+  }, [coursewareIndex, coursewares.length, setCurrentCoursewareIndex, navigate, pageIndex]);
 
   useEffect(() => {
-    if (pageIndex) {
+    if (pageIndex && courseware) {
       const index = parseInt(pageIndex, 10);
-      if (!isNaN(index) && courseware && index >= 0 && index < courseware.pages.length) {
+      if (!isNaN(index) && index >= 0 && index < courseware.pages.length) {
         setCurrentIndex(index);
+      } else {
+        // 如果页面索引无效，设置为0
+        setCurrentIndex(0);
+        navigate(`/player/${currentCoursewareIndex}/0`, { replace: true });
       }
+    } else if (courseware && courseware.pages.length > 0) {
+      // 如果没有页面索引，设置为0
+      setCurrentIndex(0);
     }
-  }, [pageIndex, courseware]);
+  }, [pageIndex, courseware, currentCoursewareIndex, navigate]);
 
 
   // 初始化iframe：注入脚本、初始化动画和交互

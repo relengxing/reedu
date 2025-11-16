@@ -1,35 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Layout } from 'antd';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import TopNav from './components/TopNav';
 import HomePage from './pages/HomePage';
+import NavigationPage from './pages/NavigationPage';
 import CatalogPage from './pages/CatalogPage';
 import CoursewarePlayer from './pages/CoursewarePlayer';
 import CountdownDisplay from './components/CountdownDisplay';
 import CountdownEndAnimation from './components/CountdownEndAnimation';
 import RollCallAnimation from './components/RollCallAnimation';
-import { CoursewareProvider, useCourseware } from './context/CoursewareContext';
-import { bundledCoursewaresCount } from './coursewares';
+import { CoursewareProvider } from './context/CoursewareContext';
 
 const { Content } = Layout;
 
-// 自动跳转组件：如果有编译期导入的课件，自动跳转到目录页
-const AutoRedirect: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { coursewares } = useCourseware();
-  const [hasRedirected, setHasRedirected] = useState(false);
-
-  useEffect(() => {
-    // 如果有编译期导入的课件，且当前在首页，自动跳转到目录页
-    if (bundledCoursewaresCount > 0 && coursewares.length > 0 && location.pathname === '/' && !hasRedirected) {
-      setHasRedirected(true);
-      navigate('/catalog');
-    }
-  }, [coursewares.length, location.pathname, navigate, hasRedirected]);
-
-  return null;
-};
 
 const App: React.FC = () => {
   const [countdownTime, setCountdownTime] = useState<number>(0);
@@ -207,7 +190,6 @@ const AppContent: React.FC = () => {
 
   return (
     <>
-      <AutoRedirect />
       <Layout style={{ height: '100vh', overflow: 'hidden' }}>
         <TopNav
           onToolsClick={handleToolsClick}
@@ -224,7 +206,8 @@ const AppContent: React.FC = () => {
         />
         <Content style={{ height: 'calc(100vh - 64px)', overflow: 'auto' }}>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<NavigationPage />} />
+            <Route path="/home" element={<HomePage />} />
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/player/:coursewareIndex/:pageIndex" element={<CoursewarePlayer />} />
             <Route path="/player/:pageIndex" element={<CoursewarePlayer />} />

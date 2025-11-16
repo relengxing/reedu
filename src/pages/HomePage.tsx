@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
-import { Card, Tabs, Upload, Button, message, Space, Typography } from 'antd';
-import { UploadOutlined, DragOutlined } from '@ant-design/icons';
+import { Card, Tabs, Upload, Button, message, Space, Typography, List, Popconfirm, Tag } from 'antd';
+import { UploadOutlined, DragOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
 import { parseHTMLCourseware } from '../utils/coursewareParser';
 import PromptGenerator from '../components/PromptGenerator';
-import { bundledCoursewaresCount } from '../coursewares';
 
 const { Title, Paragraph } = Typography;
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { addCourseware, coursewares, setCurrentCoursewareIndex, reorderCoursewares } = useCourseware();
+  const { 
+    addCourseware, 
+    coursewares, 
+    setCurrentCoursewareIndex, 
+    reorderCoursewares,
+    bundledCoursewares,
+    bundledCoursewareGroups,
+    addBundledCourseware,
+    removeCourseware,
+  } = useCourseware();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -58,18 +66,76 @@ const HomePage: React.FC = () => {
                     <Paragraph>
                       请上传符合规范的HTML课件文件。课件将被自动切分为多个页面，并统一处理数学公式。
                     </Paragraph>
-                    {bundledCoursewaresCount > 0 && (
-                      <Paragraph type="success" style={{ marginTop: '8px' }}>
-                        ✓ 已检测到 {bundledCoursewaresCount} 个编译期导入的课件，已自动加载
-                      </Paragraph>
-                    )}
                   </div>
                   <Upload {...uploadProps}>
                     <Button icon={<UploadOutlined />}>选择HTML文件（可多选）</Button>
                   </Upload>
+                  
+                  {/* 预编译课件资源管理 */}
+                  {bundledCoursewares.length > 0 && (
+                    <div style={{ marginTop: '32px' }}>
+                      <Title level={5}>预编译课件资源（{bundledCoursewares.length}个）：</Title>
+                      <Paragraph type="secondary" style={{ marginBottom: '16px' }}>
+                        这些是编译期导入的课件资源，可以选择使用或删除。删除后不会影响资源本身，只是从使用列表中移除。
+                      </Paragraph>
+                      <List
+                        dataSource={bundledCoursewares}
+                        renderItem={(cw, index) => {
+                          const isInUse = coursewares.some(usedCw => usedCw.sourcePath === cw.sourcePath);
+                          return (
+                            <List.Item
+                              actions={[
+                                isInUse ? (
+                                  <Popconfirm
+                                    title="确定要从使用列表中移除这个课件吗？"
+                                    onConfirm={() => {
+                                      const usedIndex = coursewares.findIndex(ucw => ucw.sourcePath === cw.sourcePath);
+                                      if (usedIndex >= 0) {
+                                        removeCourseware(usedIndex);
+                                        message.success('已从使用列表移除');
+                                      }
+                                    }}
+                                  >
+                                    <Button size="small" danger icon={<DeleteOutlined />}>
+                                      移除
+                                    </Button>
+                                  </Popconfirm>
+                                ) : (
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => {
+                                      addBundledCourseware(cw);
+                                      message.success(`已添加课件"${cw.title}"到使用列表`);
+                                    }}
+                                  >
+                                    使用
+                                  </Button>
+                                ),
+                              ]}
+                            >
+                              <List.Item.Meta
+                                title={
+                                  <Space>
+                                    <span>{cw.title}</span>
+                                    {cw.groupName && <Tag>{cw.groupName}</Tag>}
+                                    {isInUse && <Tag color="green">使用中</Tag>}
+                                  </Space>
+                                }
+                                description={cw.sourcePath}
+                              />
+                            </List.Item>
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {/* 正在使用的课件列表 */}
                   {coursewares.length > 0 && (
-                    <div>
-                      <Title level={5}>已导入的课件（{coursewares.length}个）：</Title>
+                    <div style={{ marginTop: '32px' }}>
+                      <Title level={5}>正在使用的课件（{coursewares.length}个）：</Title>
                       <Space direction="vertical" style={{ width: '100%' }}>
                         {coursewares.map((cw, index) => (
                           <Card
@@ -111,6 +177,7 @@ const HomePage: React.FC = () => {
                             <Space>
                               <DragOutlined style={{ color: '#999', cursor: 'grab' }} />
                               <span>{index + 1}. {cw.title}</span>
+                              {cw.isBundled && <Tag>预编译</Tag>}
                               <Button
                                 size="small"
                                 type="link"
@@ -121,6 +188,17 @@ const HomePage: React.FC = () => {
                               >
                                 查看目录
                               </Button>
+                              <Popconfirm
+                                title="确定要删除这个课件吗？"
+                                onConfirm={() => {
+                                  removeCourseware(index);
+                                  message.success('已删除');
+                                }}
+                              >
+                                <Button size="small" danger type="link" icon={<DeleteOutlined />}>
+                                  删除
+                                </Button>
+                              </Popconfirm>
                             </Space>
                           </Card>
                         ))}

@@ -1,22 +1,16 @@
 /**
  * 编译期课件导入配置
- * 将课件HTML文件放在此目录下，然后在此文件中配置顺序
+ * 支持按文件夹分组组织课件，每个文件夹是一组课件
  * 
  * 使用方式：
- * 1. 将HTML课件文件复制到 src/coursewares/ 目录
- * 2. 在下面的 coursewareOrder 数组中按顺序列出课件文件名（不含 .html 扩展名）
- * 3. 系统会自动导入并按照指定顺序排列课件
- * 
- * 示例：
- * const coursewareOrder = [
- *   '封面页',
- *   '第一课',
- *   '第二课',
- *   '练习1'
- * ];
+ * 1. 将课件HTML文件放在 src/coursewares/ 目录下
+ * 2. 可以创建子文件夹来组织课件组，每个文件夹是一组课件
+ * 3. 也可以直接在根目录放置课件（会被归入"默认组"）
+ * 4. 系统会自动按文件夹分组并导入课件
  */
 
 import { parseHTMLCourseware, setAudioPathMap } from '../utils/coursewareParser';
+import type { CoursewareData, CoursewareGroup } from '../types';
 
 // 导入音频文件（使用 ?url 获取打包后的 URL）
 // 使用 import.meta.glob 导入所有音频文件
@@ -44,69 +38,83 @@ Object.entries(audioModules).forEach(([path, url]) => {
 // 设置音频路径映射到解析器
 setAudioPathMap(audioPathMap);
 
-// 指定课件的显示顺序（按文件名，不含 .html 扩展名）
-// 未在此列表中的课件会按文件名排序追加到末尾
-const coursewareOrder: string[] = [
-  '封面页',
-  '上下坡问题',
-  '应用题',
-  '火车优化1',
-  '环形道路相遇问题',
-  '练习1填空题',
-  '选择题',
-  // 在这里添加更多课件，按你想要的顺序
-];
-
-// 使用 import.meta.glob 导入所有课件（更可靠的方式）
+// 使用 import.meta.glob 导入所有课件（支持子文件夹）
 // 这样可以确保在打包时正确内联文件内容
-const coursewareModules = import.meta.glob('./*.html', { 
+const coursewareModules = import.meta.glob('./**/*.html', { 
   query: '?raw',
   import: 'default',
   eager: true 
 }) as Record<string, string>;
 
-// 解析所有课件
-const coursewareDataList = Object.entries(coursewareModules).map(([path, content]) => {
-  // 从路径提取文件名（去掉 ./ 和 .html）
-  const filename = path.replace(/^\.\//, '').replace(/\.html$/, '');
-  return { content, filename };
-});
+// 按文件夹分组课件
+const coursewareGroupsMap = new Map<string, Array<{ path: string; content: string; filename: string }>>();
 
-// 按照指定顺序排序课件
-const sortedCoursewareDataList = coursewareDataList.sort((a, b) => {
-  const indexA = coursewareOrder.indexOf(a.filename);
-  const indexB = coursewareOrder.indexOf(b.filename);
+Object.entries(coursewareModules).forEach(([path, content]) => {
+  // 从路径提取文件夹和文件名
+  // 例如: ./group1/课件1.html -> groupId: 'group1', filename: '课件1'
+  // 例如: ./课件1.html -> groupId: '', filename: '课件1'
+  const pathParts = path.replace(/^\.\//, '').split('/');
+  const filename = pathParts[pathParts.length - 1].replace(/\.html$/, '');
+  const groupId = pathParts.length > 1 ? pathParts[0] : '';
   
-  // 如果都在顺序列表中，按照列表顺序排序
-  if (indexA !== -1 && indexB !== -1) {
-    return indexA - indexB;
+  if (!coursewareGroupsMap.has(groupId)) {
+    coursewareGroupsMap.set(groupId, []);
   }
-  // 如果只有A在列表中，A排在前面
-  if (indexA !== -1) {
-    return -1;
-  }
-  // 如果只有B在列表中，B排在前面
-  if (indexB !== -1) {
-    return 1;
-  }
-  // 如果都不在列表中，按文件名排序
-  return a.filename.localeCompare(b.filename, 'zh-CN');
+  coursewareGroupsMap.get(groupId)!.push({ path, content, filename });
 });
 
-export const bundledCoursewares = sortedCoursewareDataList.map(({ content, filename }) => {
-  try {
-    const courseware = parseHTMLCourseware(content, filename);
-    console.log(`[编译期导入] 成功加载课件: ${filename}`);
-    return courseware;
-  } catch (error) {
-    console.error(`[编译期导入] 加载课件失败: ${filename}`, error);
-    throw error;
-  }
+// 解析所有课件并按组组织
+const coursewareGroups: CoursewareGroup[] = [];
+const allBundledCoursewares: CoursewareData[] = [];
+
+coursewareGroupsMap.forEach((coursewares, groupId) => {
+  // 按文件名排序
+  coursewares.sort((a, b) => a.filename.localeCompare(b.filename, 'zh-CN'));
+  
+  // 解析该组的所有课件
+  const parsedCoursewares: CoursewareData[] = coursewares.map(({ content, filename, path }) => {
+    try {
+      const courseware = parseHTMLCourseware(content, filename);
+      // 标记为预编译课件
+      courseware.isBundled = true;
+      courseware.sourcePath = path;
+      // 设置组信息
+      if (groupId) {
+        courseware.groupId = groupId;
+        courseware.groupName = groupId;
+      } else {
+        courseware.groupId = 'default';
+        courseware.groupName = '默认组';
+      }
+      console.log(`[编译期导入] 成功加载课件: ${groupId ? `${groupId}/` : ''}${filename}`);
+      return courseware;
+    } catch (error) {
+      console.error(`[编译期导入] 加载课件失败: ${groupId ? `${groupId}/` : ''}${filename}`, error);
+      throw error;
+    }
+  });
+  
+  // 创建课件组
+  const groupName = groupId || '默认组';
+  coursewareGroups.push({
+    id: groupId || 'default',
+    name: groupName,
+    coursewares: parsedCoursewares,
+  });
+  
+  // 添加到总列表
+  allBundledCoursewares.push(...parsedCoursewares);
 });
+
+// 导出所有预编译课件（作为资源，可以被选择使用）
+export const bundledCoursewares = allBundledCoursewares;
+
+// 导出课件组
+export const bundledCoursewareGroups = coursewareGroups;
 
 // 导出课件数量，用于调试
 export const bundledCoursewaresCount = bundledCoursewares.length;
 
 // 调试信息
-console.log(`[编译期导入] 成功解析 ${bundledCoursewaresCount} 个课件`);
+console.log(`[编译期导入] 成功解析 ${bundledCoursewaresCount} 个课件，分为 ${coursewareGroups.length} 个组`);
 
