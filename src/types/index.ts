@@ -29,6 +29,7 @@ export interface CoursewareData {
 export interface CoursewareGroup {
   id: string; // 组ID（文件夹名）
   name: string; // 组名称
+  courseId: string; // 课程ID（文件夹名的MD5哈希值，用于URL）
   coursewares: CoursewareData[]; // 该组下的所有课件
 }
 

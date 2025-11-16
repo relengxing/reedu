@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import NavigationPage from './pages/NavigationPage';
 import CatalogPage from './pages/CatalogPage';
 import CoursewarePlayer from './pages/CoursewarePlayer';
+import CoursePage from './pages/CoursePage';
 import CountdownDisplay from './components/CountdownDisplay';
 import CountdownEndAnimation from './components/CountdownEndAnimation';
 import RollCallAnimation from './components/RollCallAnimation';
@@ -211,6 +212,8 @@ const AppContent: React.FC = () => {
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/player/:coursewareIndex/:pageIndex" element={<CoursewarePlayer />} />
             <Route path="/player/:pageIndex" element={<CoursewarePlayer />} />
+            {/* 课程URL：32位MD5字符串，放在其他路由之后，避免与固定路由冲突 */}
+            <Route path="/:courseId" element={<CoursePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Content>

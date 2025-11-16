@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Typography, Button, Space, Row, Col, Tag } from 'antd';
+import { Card, Typography, Button, Space, Row, Col, Tag, Input, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
-import { FolderOutlined, FileTextOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { FolderOutlined, FileTextOutlined, PlayCircleOutlined, LinkOutlined, CopyOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -119,6 +119,33 @@ const NavigationPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* 课程URL */}
+                <div style={{ marginTop: '12px' }}>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>课程链接：</Text>
+                  <Input.Group compact style={{ marginTop: '4px' }}>
+                    <Input
+                      readOnly
+                      value={`${window.location.origin}/${group.courseId}`}
+                      style={{ fontSize: '11px' }}
+                      prefix={<LinkOutlined />}
+                    />
+                    <Button
+                      icon={<CopyOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = `${window.location.origin}/${group.courseId}`;
+                        navigator.clipboard.writeText(url).then(() => {
+                          message.success('课程链接已复制到剪贴板');
+                        }).catch(() => {
+                          message.error('复制失败');
+                        });
+                      }}
+                    >
+                      复制
+                    </Button>
+                  </Input.Group>
+                </div>
 
                 <Button
                   type="primary"

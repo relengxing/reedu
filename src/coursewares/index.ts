@@ -11,6 +11,7 @@
 
 import { parseHTMLCourseware, setAudioPathMap } from '../utils/coursewareParser';
 import type { CoursewareData, CoursewareGroup } from '../types';
+import { hashStringSync } from '../utils/md5';
 
 // 导入音频文件（使用 ?url 获取打包后的 URL）
 // 使用 import.meta.glob 导入所有音频文件
@@ -96,9 +97,13 @@ coursewareGroupsMap.forEach((coursewares, groupId) => {
   
   // 创建课件组
   const groupName = groupId || '默认组';
+  const groupIdForHash = groupId || 'default';
+  // 计算课程ID（文件夹名的MD5哈希值）
+  const courseId = hashStringSync(groupIdForHash);
   coursewareGroups.push({
     id: groupId || 'default',
     name: groupName,
+    courseId: courseId,
     coursewares: parsedCoursewares,
   });
   
