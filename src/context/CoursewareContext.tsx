@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { CoursewareData } from '../types';
+import { bundledCoursewares } from '../coursewares';
 
 interface CoursewareContextType {
   coursewares: CoursewareData[];
@@ -27,7 +28,16 @@ export const CoursewareContext = createContext<CoursewareContextType>({
 });
 
 export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [coursewares, setCoursewares] = useState<CoursewareData[]>([]);
+  // 初始化时加载编译期导入的课件
+  const [coursewares, setCoursewares] = useState<CoursewareData[]>(() => {
+    // 如果存在编译期导入的课件，则使用它们
+    if (bundledCoursewares.length > 0) {
+      console.log('[CoursewareContext] 初始化时加载编译期课件:', bundledCoursewares.length, '个');
+      return [...bundledCoursewares];
+    }
+    console.log('[CoursewareContext] 未找到编译期课件');
+    return [];
+  });
   const [currentCoursewareIndex, setCurrentCoursewareIndex] = useState<number>(0);
 
   const addCourseware = (courseware: CoursewareData) => {

@@ -43,13 +43,27 @@ export const renderMath = async (element: HTMLElement) => {
 
   // 检查是否已经渲染过公式
   // KaTeX渲染后的HTML通常包含class="katex"或class="katex-display"
-  // 如果存在这些class且没有未渲染的公式标记（\[ 或 \(），说明已经渲染过
+  // 如果课件HTML中已经有auto-render脚本，它会自动渲染公式
+  // 我们需要检查是否已经有渲染的公式，如果有就完全跳过
   const hasRenderedMath = element.querySelector('.katex, .katex-display') !== null;
-  const hasUnrenderedMath = element.innerHTML.includes('\\[') || element.innerHTML.includes('\\(');
   
-  // 如果已经有渲染的公式，且没有未渲染的公式标记，说明已经全部渲染过，跳过
-  if (hasRenderedMath && !hasUnrenderedMath) {
+  // 检查是否还有未渲染的公式标记
+  // 注意：需要检查转义后的形式，因为HTML中可能被转义为 &lt; 等
+  const htmlContent = element.innerHTML;
+  const hasUnrenderedMath = /\\\[|\\\(|&lt;!--.*?\\\[|&lt;!--.*?\\\(/.test(htmlContent) ||
+                            htmlContent.includes('\\[') || 
+                            htmlContent.includes('\\(');
+  
+  // 如果已经有渲染的公式，说明课件中的auto-render已经工作，完全跳过
+  if (hasRenderedMath) {
+    console.log('[renderMath] 检测到已渲染的公式，跳过渲染（课件中的auto-render已处理）');
     return; // 已经渲染过，跳过
+  }
+  
+  // 如果没有已渲染的公式，但也没有未渲染的公式标记，也跳过
+  if (!hasUnrenderedMath) {
+    console.log('[renderMath] 未检测到需要渲染的公式，跳过');
+    return;
   }
 
   // 处理行内公式 \(...\) - 使用更健壮的正则表达式

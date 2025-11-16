@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
-import { renderMath } from '../utils/mathRenderer';
 
 const { Text } = Typography;
 
@@ -13,7 +12,6 @@ const CoursewarePlayer: React.FC = () => {
   const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex, courseware } = useCourseware();
   const [currentIndex, setCurrentIndex] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const mathRenderedRef = useRef<boolean>(false); // 标记公式是否已渲染
   const scrollUpdateTimerRef = useRef<number | null>(null); // 滚动更新防抖定时器
 
   // 计算所有课件的总页面数和全局索引
@@ -70,10 +68,6 @@ const CoursewarePlayer: React.FC = () => {
     }
   }, [pageIndex, courseware]);
 
-  // 当课件变化时，重置公式渲染标记
-  useEffect(() => {
-    mathRenderedRef.current = false;
-  }, [courseware?.fullHTML]);
 
   // 初始化iframe：注入脚本、初始化动画和交互
   useEffect(() => {
@@ -266,12 +260,9 @@ const CoursewarePlayer: React.FC = () => {
             iframeDoc.body.setAttribute('data-scripts-executed', 'true');
           }
 
-          // 只在首次加载时渲染数学公式，避免重复渲染
-          const container = iframeDoc.body;
-          if (!mathRenderedRef.current) {
-            renderMath(container).catch(console.error);
-            mathRenderedRef.current = true;
-          }
+          // 公式渲染已由课件HTML中的脚本处理，框架不再处理
+          // 课件HTML中包含auto-render脚本，会自动渲染公式
+          mathRenderedRef.current = true;
 
           // 设置滚动监听，更新导航栏选中状态
           const handleScroll = () => {

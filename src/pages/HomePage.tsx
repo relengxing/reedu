@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
 import { parseHTMLCourseware } from '../utils/coursewareParser';
 import PromptGenerator from '../components/PromptGenerator';
+import { bundledCoursewaresCount } from '../coursewares';
 
 const { Title, Paragraph } = Typography;
 
@@ -57,6 +58,11 @@ const HomePage: React.FC = () => {
                     <Paragraph>
                       请上传符合规范的HTML课件文件。课件将被自动切分为多个页面，并统一处理数学公式。
                     </Paragraph>
+                    {bundledCoursewaresCount > 0 && (
+                      <Paragraph type="success" style={{ marginTop: '8px' }}>
+                        ✓ 已检测到 {bundledCoursewaresCount} 个编译期导入的课件，已自动加载
+                      </Paragraph>
+                    )}
                   </div>
                   <Upload {...uploadProps}>
                     <Button icon={<UploadOutlined />}>选择HTML文件（可多选）</Button>
