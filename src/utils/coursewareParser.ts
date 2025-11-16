@@ -105,16 +105,32 @@ export const parseHTMLCourseware = (htmlContent: string, filename: string): Cour
   
   // 替换音频文件路径为可访问的 URL
   // 匹配 new Audio('./路径/文件名.mp3') 或 new Audio('路径/文件名.mp3')
-  if (audioPathMap) {
-    fullHTML = fullHTML.replace(/new\s+Audio\s*\(\s*['"](\.\/[^'"]+\.mp3)['"]\s*\)/g, (match, audioPath) => {
+  // 注意：只替换在字符串中的路径，避免影响其他代码
+  if (audioPathMap && audioPathMap.size > 0) {
+    // 更精确的正则：匹配 new Audio('路径') 或 new Audio("路径")
+    // 确保路径以 .mp3 结尾，且路径中包含 / 或 \
+    // 使用非贪婪匹配，避免匹配过多内容
+    const audioRegex = /new\s+Audio\s*\(\s*(['"])(\.\/[^'"]*?[\/\\][^'"]+?\.mp3)\1\s*\)/g;
+    let matchCount = 0;
+    fullHTML = fullHTML.replace(audioRegex, (match, quote, audioPath) => {
+      matchCount++;
+      // 尝试查找音频文件
       const url = audioPathMap!.get(audioPath) || audioPathMap!.get(audioPath.replace(/^\.\//, ''));
       if (url) {
-        console.log(`[课件解析] 替换音频路径: ${audioPath} -> ${url}`);
-        return `new Audio('${url}')`;
+        // 根据使用的引号类型进行转义
+        // 如果使用单引号，需要转义单引号；如果使用双引号，需要转义双引号
+        const escapedUrl = quote === "'" 
+          ? url.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+          : url.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        console.log(`[课件解析] 替换音频路径 (${matchCount}): ${audioPath} -> ${url.substring(0, 50)}...`);
+        return `new Audio(${quote}${escapedUrl}${quote})`;
       }
       console.warn(`[课件解析] 未找到音频文件: ${audioPath}`);
       return match; // 如果找不到，保持原样
     });
+    if (matchCount > 0) {
+      console.log(`[课件解析] 共替换了 ${matchCount} 个音频路径`);
+    }
   }
   
   // 调试：检查script标签是否被保留

@@ -113,151 +113,87 @@ const CoursewarePlayer: React.FC = () => {
           // 手动执行script标签中的代码（因为srcDoc可能不会自动执行script）
           // 检查是否已经有script执行过的标记
           if (!iframeDoc.body.hasAttribute('data-scripts-executed')) {
-            const scripts = iframeDoc.querySelectorAll('script:not([src])'); // 只处理内联script
+            const scripts = Array.from(iframeDoc.querySelectorAll('script:not([src])')); // 只处理内联script
             console.log(`Found ${scripts.length} inline scripts to execute`);
             
-            scripts.forEach((script, index) => {
-              try {
-                let scriptContent = script.textContent || script.innerHTML;
-                if (scriptContent.trim()) {
-                  console.log(`Executing script ${index + 1}/${scripts.length}`);
-                  
-                  // 如果script中有DOMContentLoaded监听器，提取函数体直接执行
-                  // 使用更简单的方法：直接将 DOMContentLoaded 替换为立即执行的代码
-                  let finalScript = scriptContent;
-                  
-                  if (scriptContent.includes('DOMContentLoaded')) {
-                    // 方法1: 直接替换 DOMContentLoaded 为立即执行的IIFE
-                    // 匹配: document.addEventListener('DOMContentLoaded', function() { ... });
-                    finalScript = scriptContent.replace(
-                      /document\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]\s*,\s*function\s*\(\s*\)\s*\{/g,
-                      '(function() {'
-                    );
+            // 使用 Promise 确保所有脚本按顺序执行完成
+            const executeScripts = async () => {
+              for (let index = 0; index < scripts.length; index++) {
+                const script = scripts[index];
+                try {
+                  let scriptContent = script.textContent || script.innerHTML;
+                  if (scriptContent.trim()) {
+                    console.log(`[脚本执行] 开始执行脚本 ${index + 1}/${scripts.length}`);
                     
-                    // 如果替换成功，需要将最后的 }) 改为 })();
-                    if (finalScript !== scriptContent) {
-                      // 找到最后一个 }) 并替换为 })();
-                      const lastMatch = finalScript.match(/\}\)\s*;?\s*$/);
-                      if (lastMatch) {
-                        finalScript = finalScript.replace(/\}\)\s*;?\s*$/, '})();');
-                      } else {
-                        // 如果没有找到，尝试在最后添加 ();
-                        const lastCloseBrace = finalScript.lastIndexOf('})');
-                        if (lastCloseBrace !== -1) {
-                          finalScript = finalScript.substring(0, lastCloseBrace + 2) + '();' + finalScript.substring(lastCloseBrace + 2);
-                        }
-                      }
-                      console.log('Converted DOMContentLoaded to IIFE');
-                    } else {
-                      // 如果替换失败，尝试提取函数体
-                      const functionStart = scriptContent.indexOf('function()');
-                      if (functionStart !== -1) {
-                        const openBrace = scriptContent.indexOf('{', functionStart);
-                        if (openBrace !== -1) {
-                          let braceCount = 0;
-                          let functionEnd = -1;
-                          for (let i = openBrace; i < scriptContent.length; i++) {
-                            if (scriptContent[i] === '{') braceCount++;
-                            if (scriptContent[i] === '}') {
-                              braceCount--;
-                              if (braceCount === 0) {
-                                functionEnd = i;
-                                break;
-                              }
+                    // 如果script中有DOMContentLoaded监听器，提取函数体直接执行
+                    let finalScript = scriptContent;
+                    
+                    if (scriptContent.includes('DOMContentLoaded')) {
+                      // 匹配: document.addEventListener('DOMContentLoaded', function() { ... });
+                      const domContentLoadedRegex = /document\.addEventListener\s*\(\s*['"]DOMContentLoaded['"]\s*,\s*function\s*\(\s*\)\s*\{/;
+                      const match = scriptContent.match(domContentLoadedRegex);
+                      
+                      if (match) {
+                        // 找到函数体的开始位置
+                        const functionStart = match.index! + match[0].length;
+                        let braceCount = 1; // 从第一个 { 开始计数
+                        let functionEnd = -1;
+                        
+                        // 找到匹配的结束括号
+                        for (let i = functionStart; i < scriptContent.length; i++) {
+                          if (scriptContent[i] === '{') braceCount++;
+                          if (scriptContent[i] === '}') {
+                            braceCount--;
+                            if (braceCount === 0) {
+                              functionEnd = i;
+                              break;
                             }
                           }
-                          
-                          if (functionEnd > openBrace) {
-                            const functionBody = scriptContent.substring(openBrace + 1, functionEnd).trim();
-                            finalScript = functionBody;
-                            console.log('Extracted function body as fallback');
-                          }
+                        }
+                        
+                        if (functionEnd > functionStart) {
+                          // 提取函数体并立即执行
+                          const functionBody = scriptContent.substring(functionStart, functionEnd);
+                          finalScript = `(function() {${functionBody}})();`;
+                          console.log('[脚本执行] 提取并转换 DOMContentLoaded 函数体');
                         }
                       }
                     }
-                  }
-                  
-                  // 关键修复：使用 iframeWin.eval 或 Function 构造函数，确保在 iframe 的 window 上下文中执行
-                  // 这样 script 中的 document 和 window 都会指向 iframe 的
-                  // 延迟执行，确保所有元素都已加载
-                  setTimeout(() => {
+                    
+                    // 在 iframe 的 window 上下文中执行
                     try {
-                      // 方法1: 直接使用 iframeWin.eval，这样执行上下文就是 iframe 的 window
-                      // eval 会在调用它的上下文中执行，所以 document 和 window 都会指向 iframe 的
-                      console.log('Executing script in iframe window context using eval');
                       (iframeWin as any).eval(finalScript);
-                      console.log('Script executed successfully via eval');
-                      
-                      // 验证：检查事件是否绑定成功
-                      setTimeout(() => {
-                        const verifyBtn = iframeDoc.querySelector('.toggle-btn') as HTMLElement;
-                        if (verifyBtn) {
-                          console.log('Verifying event binding after execution');
-                          // 尝试手动触发一次点击来验证
-                          const clickEvent = new (iframeWin as any).MouseEvent('click', {
-                            bubbles: true,
-                            cancelable: true,
-                            view: iframeWin
-                          });
-                          verifyBtn.dispatchEvent(clickEvent);
-                          console.log('Verification click event dispatched');
-                        }
-                      }, 100);
+                      console.log(`[脚本执行] 脚本 ${index + 1} 执行成功`);
                     } catch (evalError) {
-                      console.warn('eval failed, trying Function constructor', evalError);
+                      console.warn(`[脚本执行] eval 失败，尝试 Function 构造函数:`, evalError);
                       try {
-                        // 方法2: 使用 Function 构造函数
                         const func = new (iframeWin as any).Function(finalScript);
                         func.call(iframeWin);
-                        console.log('Script executed successfully via Function constructor');
+                        console.log(`[脚本执行] 脚本 ${index + 1} 通过 Function 构造函数执行成功`);
                       } catch (funcError) {
-                        console.error('Function constructor also failed, falling back to DOM injection', funcError);
-                        // 方法3: 回退到 DOM 注入
+                        console.error(`[脚本执行] Function 构造函数也失败，使用 DOM 注入:`, funcError);
+                        // 回退到 DOM 注入
                         const newScript = iframeDoc.createElement('script');
                         newScript.textContent = finalScript;
                         iframeDoc.body.appendChild(newScript);
-                        console.log('Script executed via DOM injection as fallback');
+                        console.log(`[脚本执行] 脚本 ${index + 1} 通过 DOM 注入执行`);
                       }
                     }
-                  }, 100); // 延迟100ms执行，确保DOM完全加载
-                  
-                  // 验证执行：检查按钮是否有事件监听器
-                  setTimeout(() => {
-                    const testBtn = iframeDoc.querySelector('.toggle-btn') as HTMLElement;
-                    if (testBtn) {
-                      console.log('After script execution - button found:', testBtn);
-                      console.log('Button click handlers check - onclick:', !!(testBtn as any).onclick);
-                      
-                      // 尝试获取事件监听器（如果可能）
-                      // 注意：标准API无法直接获取addEventListener绑定的事件，但我们可以测试
-                      console.log('Testing if addEventListener works by manually triggering click');
-                      try {
-                        // 创建一个测试事件
-                        const testEvent = new (iframeWin as any).MouseEvent('click', {
-                          bubbles: true,
-                          cancelable: true,
-                          view: iframeWin
-                        });
-                        // 手动触发（这会触发所有监听器）
-                        testBtn.dispatchEvent(testEvent);
-                        console.log('Test click event dispatched');
-                      } catch (e) {
-                        console.warn('Failed to dispatch test event:', e);
-                      }
-                    } else {
-                      console.warn('No toggle button found after script execution');
-                    }
-                  }, 200);
-                  
-                  console.log('Executed script via DOM injection, script length:', finalScript.length);
+                  }
+                } catch (e) {
+                  console.error(`[脚本执行] 脚本 ${index + 1} 执行失败:`, e);
                 }
-              } catch (e) {
-                console.error(`Failed to execute script ${index + 1}:`, e);
               }
-            });
+              
+              // 所有脚本执行完成后，标记已执行
+              iframeDoc.body.setAttribute('data-scripts-executed', 'true');
+              console.log('[脚本执行] 所有脚本执行完成');
+            };
             
-            // 标记已执行
-            iframeDoc.body.setAttribute('data-scripts-executed', 'true');
+            // 延迟执行，确保 DOM 完全加载
+            setTimeout(() => {
+              executeScripts().catch(console.error);
+            }, 100);
           }
 
           // 公式渲染已由课件HTML中的脚本处理，框架不再处理
