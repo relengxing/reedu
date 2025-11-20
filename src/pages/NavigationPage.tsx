@@ -18,7 +18,15 @@ const NavigationPage: React.FC = () => {
       // 找到新添加的课件索引
       const targetIndex = coursewares.findIndex(cw => cw.sourcePath === pendingNavigation.sourcePath);
       if (targetIndex >= 0) {
-        navigate(`/player/${targetIndex}/0`);
+        const courseware = coursewares[targetIndex];
+        // 构建语义化URL
+        if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath) {
+          const courseFileName = courseware.filePath.split('/').pop()?.replace('.html', '') || '';
+          const folder = courseware.groupId || '';
+          navigate(`/${courseware.platform}/${courseware.owner}/${courseware.repo}/${folder}/${courseFileName}/0`);
+        } else {
+          navigate(`/player/${targetIndex}/0`);
+        }
         setPendingNavigation(null);
       }
     }
@@ -61,6 +69,17 @@ const NavigationPage: React.FC = () => {
       setPendingNavigation({ sourcePath: firstCourseware.sourcePath! });
     }
   };
+
+  // 添加调试日志
+  useEffect(() => {
+    console.log('[NavigationPage] bundledCoursewareGroups:', bundledCoursewareGroups.length);
+    console.log('[NavigationPage] 课件组详情:', bundledCoursewareGroups.map(g => ({
+      id: g.id,
+      name: g.name,
+      courseId: g.courseId,
+      count: g.coursewares.length
+    })));
+  }, [bundledCoursewareGroups]);
 
   if (bundledCoursewareGroups.length === 0) {
     return (

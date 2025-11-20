@@ -1,19 +1,42 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
 
 const { Text } = Typography;
 
+// 检查URL是否为语义化格式 (/:platform/:owner/:repo/:folder/:course/:pageIndex?)
+function isSemanticUrl(pathname: string): boolean {
+  // 语义化URL格式: /平台/所有者/仓库/文件夹/课件/页面索引
+  const pattern = /^\/(?:github|gitee)\/[^\/]+\/[^\/]+\/.+/;
+  return pattern.test(pathname);
+}
+
+// 构建页面URL，根据当前URL类型和课件信息选择格式
+function buildPageUrl(pathname: string, coursewareIndex: number, pageIndex: number, targetCourseware?: any): string {
+  // 如果目标课件有完整的仓库信息，构建语义化URL
+  if (targetCourseware?.platform && targetCourseware?.owner && targetCourseware?.repo && targetCourseware?.filePath) {
+    const courseFileName = targetCourseware.filePath.split('/').pop()?.replace('.html', '') || '';
+    const folder = targetCourseware.groupId || '';
+    return `/${targetCourseware.platform}/${targetCourseware.owner}/${targetCourseware.repo}/${folder}/${courseFileName}/${pageIndex}`;
+  }
+  
+  // 如果当前是语义化URL但目标课件没有仓库信息，或者当前就不是语义化URL
+  // 都降级到传统格式
+  return `/player/${coursewareIndex}/${pageIndex}`;
+}
+
 const CoursewarePlayer: React.FC = () => {
   const { coursewareIndex, pageIndex } = useParams<{ coursewareIndex?: string; pageIndex: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { coursewares, currentCoursewareIndex, setCurrentCoursewareIndex, courseware, isLoading, bundledCoursewareGroups } = useCourseware();
   const [currentIndex, setCurrentIndex] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const scrollUpdateTimerRef = useRef<number | null>(null); // 滚动更新防抖定时器
   const [waitingForExternal, setWaitingForExternal] = useState(false);
+  const isSemanticUrlPath = isSemanticUrl(location.pathname);
 
   // 计算所有课件的总页面数和全局索引
   const getGlobalPageInfo = useMemo(() => {
@@ -94,32 +117,48 @@ const CoursewarePlayer: React.FC = () => {
         navigate(`/player/${validIndex}/${pageIndex || 0}`, { replace: true });
       }
     } else {
-      // 如果没有路由参数，使用恢复的索引，并更新URL
+      // 如果没有路由参数，使用恢复的索引
       const validIndex = currentCoursewareIndex < coursewares.length 
         ? currentCoursewareIndex 
         : 0;
       if (validIndex >= 0 && coursewares[validIndex]) {
         setCurrentCoursewareIndex(validIndex);
-        navigate(`/player/${validIndex}/${pageIndex || 0}`, { replace: true });
+        // 只有在非语义化URL时才跳转更新URL
+        if (!isSemanticUrlPath) {
+          navigate(`/player/${validIndex}/${pageIndex || 0}`, { replace: true });
+        }
       }
     }
   }, [coursewareIndex, coursewares.length, setCurrentCoursewareIndex, navigate, pageIndex, isLoading, waitingForExternal, bundledCoursewareGroups.length]);
 
   useEffect(() => {
-    if (pageIndex && courseware) {
-      const index = parseInt(pageIndex, 10);
+    // 从语义化URL中提取页面索引
+    let extractedPageIndex: string | undefined = pageIndex;
+    if (isSemanticUrlPath) {
+      // 语义化URL格式: /:platform/:owner/:repo/:folder/:course/:pageIndex
+      const pathParts = location.pathname.split('/').filter(Boolean);
+      if (pathParts.length >= 6) {
+        extractedPageIndex = pathParts[pathParts.length - 1];
+      }
+    }
+    
+    if (extractedPageIndex && courseware) {
+      const index = parseInt(extractedPageIndex, 10);
       if (!isNaN(index) && index >= 0 && index < courseware.pages.length) {
         setCurrentIndex(index);
       } else {
         // 如果页面索引无效，设置为0
         setCurrentIndex(0);
-        navigate(`/player/${currentCoursewareIndex}/0`, { replace: true });
+        // 只有在非语义化URL时才跳转更新URL
+        if (!isSemanticUrlPath) {
+          navigate(`/player/${currentCoursewareIndex}/0`, { replace: true });
+        }
       }
     } else if (courseware && courseware.pages.length > 0) {
       // 如果没有页面索引，设置为0
       setCurrentIndex(0);
     }
-  }, [pageIndex, courseware, currentCoursewareIndex, navigate]);
+  }, [pageIndex, courseware, currentCoursewareIndex, navigate, isSemanticUrlPath, location.pathname]);
 
 
   // 初始化iframe：注入脚本、初始化动画和交互
@@ -340,7 +379,8 @@ const CoursewarePlayer: React.FC = () => {
               
               // 如果计算出的索引与URL中的索引不同，更新URL（这会触发导航栏更新）
               if (activeIndex !== currentUrlIndex) {
-                navigate(`/player/${currentCoursewareIndex}/${activeIndex}`, { replace: true });
+                const newUrl = buildPageUrl(location.pathname, currentCoursewareIndex, activeIndex, courseware);
+                navigate(newUrl, { replace: true });
               }
             }, 150); // 150ms防抖
           };
@@ -472,7 +512,8 @@ const CoursewarePlayer: React.FC = () => {
       if (prevPage) {
         setCurrentCoursewareIndex(prevPage.coursewareIndex);
         setCurrentIndex(prevPage.pageIndex);
-        navigate(`/player/${prevPage.coursewareIndex}/${prevPage.pageIndex}`);
+        const newUrl = buildPageUrl(location.pathname, prevPage.coursewareIndex, prevPage.pageIndex, coursewares[prevPage.coursewareIndex]);
+        navigate(newUrl);
       }
     }
   };
@@ -485,7 +526,8 @@ const CoursewarePlayer: React.FC = () => {
       if (nextPage) {
         setCurrentCoursewareIndex(nextPage.coursewareIndex);
         setCurrentIndex(nextPage.pageIndex);
-        navigate(`/player/${nextPage.coursewareIndex}/${nextPage.pageIndex}`);
+        const newUrl = buildPageUrl(location.pathname, nextPage.coursewareIndex, nextPage.pageIndex, coursewares[nextPage.coursewareIndex]);
+        navigate(newUrl);
       }
     }
   };

@@ -6,8 +6,21 @@ import { HomeOutlined, ToolOutlined, FileTextOutlined, UnorderedListOutlined, Se
 import { useCourseware } from '../context/CoursewareContext';
 import { useAuth } from '../context/AuthContext';
 import ToolsModal from './ToolsModal';
+import type { CoursewareData } from '../types';
 
 const { Text } = Typography;
+
+// 构建课件页面URL - 优先使用语义化URL
+function buildCoursewarePageUrl(courseware: CoursewareData, coursewareIndex: number, pageIndex: number): string {
+  // 如果有仓库信息，使用语义化URL
+  if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath) {
+    const courseFileName = courseware.filePath.split('/').pop()?.replace('.html', '') || '';
+    const folder = courseware.groupId || '';
+    return `/${courseware.platform}/${courseware.owner}/${courseware.repo}/${folder}/${courseFileName}/${pageIndex}`;
+  }
+  // 否则使用传统格式
+  return `/player/${coursewareIndex}/${pageIndex}`;
+}
 
 interface TopNavProps {
   onToolsClick?: () => void;
@@ -138,7 +151,8 @@ const TopNav: React.FC<TopNavProps> = ({
     coursewares.forEach((cw, cwIndex) => {
       const bgColor = COURSEWARE_COLORS[cwIndex % COURSEWARE_COLORS.length];
       cw.pages.forEach((page) => {
-        const key = `/player/${cwIndex}/${page.index}`;
+        // 使用语义化URL作为key（如果有仓库信息）
+        const key = buildCoursewarePageUrl(cw, cwIndex, page.index);
         items.push({
           key,
           label: (
@@ -164,21 +178,52 @@ const TopNav: React.FC<TopNavProps> = ({
       if (onToolsClick) {
         onToolsClick();
       }
-    } else if (key.startsWith('/player/')) {
-      // 解析路径：/player/{coursewareIndex}/{pageIndex}
-      const match = key.match(/\/player\/(\d+)\/(\d+)/);
-      if (match) {
-        const cwIndex = parseInt(match[1], 10);
-        if (cwIndex >= 0 && cwIndex < coursewares.length) {
-          setCurrentCoursewareIndex(cwIndex);
-          navigate(key);
-        }
-      } else {
-        navigate(key);
-      }
-    } else {
-      navigate(key);
+      return;
     }
+    
+    // 处理课件页面的tab（可能是语义化URL或传统格式）
+    // 语义化格式: /platform/owner/repo/folder/course/pageIndex
+    // 传统格式: /player/coursewareIndex/pageIndex
+    
+    // 尝试匹配传统格式
+    const playerMatch = key.match(/\/player\/(\d+)\/(\d+)/);
+    if (playerMatch) {
+      const cwIndex = parseInt(playerMatch[1], 10);
+      if (cwIndex >= 0 && cwIndex < coursewares.length) {
+        setCurrentCoursewareIndex(cwIndex);
+      }
+      navigate(key);
+      return;
+    }
+    
+    // 尝试匹配语义化URL格式
+    const semanticMatch = key.match(/^\/(github|gitee)\/([^\/]+)\/([^\/]+)\/([^\/]+)\/([^\/]+)\/(\d+)$/);
+    if (semanticMatch) {
+      const pageIndex = parseInt(semanticMatch[6], 10);
+      // 找到对应的课件索引
+      const platform = semanticMatch[1];
+      const owner = semanticMatch[2];
+      const repo = semanticMatch[3];
+      const folder = semanticMatch[4];
+      const course = semanticMatch[5];
+      
+      const cwIndex = coursewares.findIndex(cw => 
+        cw.platform === platform &&
+        cw.owner === owner &&
+        cw.repo === repo &&
+        cw.groupId === folder &&
+        cw.filePath?.includes(`${course}.html`)
+      );
+      
+      if (cwIndex >= 0) {
+        setCurrentCoursewareIndex(cwIndex);
+      }
+      navigate(key);
+      return;
+    }
+    
+    // 其他路由直接导航
+    navigate(key);
   };
 
   // 滚动到当前标签并居中
@@ -302,17 +347,54 @@ const TopNav: React.FC<TopNavProps> = ({
         width={600}
       >
         <List
-          dataSource={tabItems?.filter(item => item.key && item.key.startsWith('/player/')) || []}
+          dataSource={tabItems?.filter(item => {
+            if (!item.key) return false;
+            // 匹配课件页面（传统格式或语义化格式）
+            return item.key.startsWith('/player/') || 
+                   item.key.match(/^\/(github|gitee)\/([^\/]+)\/([^\/]+)\/.+\/\d+$/);
+          }) || []}
           renderItem={(item) => {
             if (!item.key) return null;
-            const match = item.key.match(/\/player\/(\d+)\/(\d+)/);
-            if (!match) return null;
-            const cwIndex = parseInt(match[1], 10);
-            const pageIndex = parseInt(match[2], 10);
-            const courseware = coursewares[cwIndex];
-            if (!courseware) return null;
-            const page = courseware.pages[pageIndex];
-            if (!page) return null;
+            
+            // 尝试解析传统格式
+            let cwIndex = -1;
+            let pageIndex = 0;
+            let courseware = null;
+            let page = null;
+            
+            const playerMatch = item.key.match(/\/player\/(\d+)\/(\d+)/);
+            if (playerMatch) {
+              cwIndex = parseInt(playerMatch[1], 10);
+              pageIndex = parseInt(playerMatch[2], 10);
+              courseware = coursewares[cwIndex];
+              page = courseware?.pages[pageIndex];
+            } else {
+              // 尝试解析语义化格式
+              const semanticMatch = item.key.match(/^\/(github|gitee)\/([^\/]+)\/([^\/]+)\/([^\/]+)\/([^\/]+)\/(\d+)$/);
+              if (semanticMatch) {
+                pageIndex = parseInt(semanticMatch[6], 10);
+                const platform = semanticMatch[1];
+                const owner = semanticMatch[2];
+                const repo = semanticMatch[3];
+                const folder = semanticMatch[4];
+                const course = semanticMatch[5];
+                
+                cwIndex = coursewares.findIndex(cw => 
+                  cw.platform === platform &&
+                  cw.owner === owner &&
+                  cw.repo === repo &&
+                  cw.groupId === folder &&
+                  cw.filePath?.includes(`${course}.html`)
+                );
+                
+                if (cwIndex >= 0) {
+                  courseware = coursewares[cwIndex];
+                  page = courseware?.pages[pageIndex];
+                }
+              }
+            }
+            
+            if (!courseware || !page) return null;
             
             return (
               <List.Item
@@ -321,7 +403,9 @@ const TopNav: React.FC<TopNavProps> = ({
                   backgroundColor: location.pathname === item.key ? '#e6f7ff' : 'transparent',
                 }}
                 onClick={() => {
-                  setCurrentCoursewareIndex(cwIndex);
+                  if (cwIndex >= 0) {
+                    setCurrentCoursewareIndex(cwIndex);
+                  }
                   navigate(item.key!);
                   setChaptersModalVisible(false);
                 }}

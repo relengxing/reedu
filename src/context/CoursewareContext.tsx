@@ -22,6 +22,12 @@ interface StoredCourseware {
   uploadId?: string;
   // 用户上传的课件需要存储fullHTML（因为无法恢复）
   fullHTML?: string;
+  // 仓库信息（用于生成语义化URL）
+  platform?: string;
+  owner?: string;
+  repo?: string;
+  branch?: string;
+  filePath?: string;
 }
 
 // 从localStorage恢复课件列表
@@ -39,9 +45,33 @@ const restoreCoursewares = (externalCoursewares: CoursewareData[] = []): Coursew
         // 从外部加载的资源中恢复
         const found = externalCoursewares.find(cw => cw.sourcePath === item.sourcePath);
         if (found) {
-          restored.push({ ...found });
+          // 使用找到的完整数据，但保留localStorage中的仓库信息（以防外部数据缺失）
+          restored.push({
+            ...found,
+            platform: found.platform || item.platform,
+            owner: found.owner || item.owner,
+            repo: found.repo || item.repo,
+            branch: found.branch || item.branch,
+            filePath: found.filePath || item.filePath,
+          });
+        } else if (item.platform && item.owner && item.repo) {
+          // 如果外部资源未加载，但localStorage中有仓库信息，使用localStorage的数据
+          console.warn(`[CoursewareContext] 使用缓存的课件数据: ${item.sourcePath}`);
+          restored.push({
+            title: item.title || '未命名课件',
+            pages: item.pages || [],
+            fullHTML: '', // fullHTML会在需要时重新加载
+            isBundled: true,
+            sourcePath: item.sourcePath,
+            platform: item.platform,
+            owner: item.owner,
+            repo: item.repo,
+            branch: item.branch,
+            filePath: item.filePath,
+            groupId: item.groupId,
+          });
         } else {
-          console.warn(`[CoursewareContext] 无法找到课件: ${item.sourcePath}，可能外部仓库尚未加载`);
+          console.warn(`[CoursewareContext] 无法找到课件且缺少仓库信息: ${item.sourcePath}`);
         }
       } else if (item.fullHTML) {
         // 用户本地上传的课件，恢复完整数据
@@ -70,10 +100,18 @@ const saveCoursewares = (coursewares: CoursewareData[]) => {
   try {
     const storedList: StoredCourseware[] = coursewares.map(cw => {
       if (cw.isBundled && cw.sourcePath) {
-        // 预编译课件只存储标识
+        // 预编译课件存储标识和仓库信息
         return {
           sourcePath: cw.sourcePath,
           isBundled: true,
+          // 保存仓库信息（用于生成语义化URL）
+          platform: cw.platform,
+          owner: cw.owner,
+          repo: cw.repo,
+          branch: cw.branch,
+          filePath: cw.filePath,
+          groupId: cw.groupId,
+          title: cw.title,
         };
       } else {
         // 用户上传的课件存储完整数据
@@ -165,6 +203,9 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [repoConfigs, setRepoConfigs] = useState<CoursewareRepoConfig[]>(() => {
     return getCoursewareRepos();
   });
+  
+  // 防止重复加载的标志
+  const [hasLoadedUserRepos, setHasLoadedUserRepos] = useState(false);
 
   // 只使用外部加载的课件（删除编译期课件）
   const allBundledCoursewares = externalCoursewares;
@@ -243,8 +284,9 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 用户登录后，自动加载用户绑定的仓库
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated && user && !hasLoadedUserRepos && !isLoading) {
       console.log('[CoursewareContext] 用户已登录，加载用户仓库');
+      setHasLoadedUserRepos(true);
       loadUserRepos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,11 +296,18 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const loadUserRepos = async () => {
     if (!user) return;
     
+    // 防止重复加载
+    if (isLoading) {
+      console.log('[CoursewareContext] 正在加载中，跳过重复请求');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       // 从Supabase获取用户的仓库列表
       const userRepos = await userRepoService.getUserRepos(user.id);
       console.log('[CoursewareContext] 获取到用户仓库:', userRepos.length);
+      console.log('[CoursewareContext] 用户仓库详情:', userRepos.map(r => ({ id: r.id, url: r.rawUrl })));
       
       if (userRepos.length === 0) {
         console.log('[CoursewareContext] 用户没有绑定仓库');
@@ -271,10 +320,14 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         baseUrl: repo.rawUrl,
       }));
 
+      console.log('[CoursewareContext] 转换后的仓库配置:', repoConfigs);
+
       // 加载所有仓库的课件
       await loadFromRepos(repoConfigs);
     } catch (error) {
       console.error('[CoursewareContext] 加载用户仓库失败:', error);
+      // 加载失败时重置标志，允许重试
+      setHasLoadedUserRepos(false);
     } finally {
       setIsLoading(false);
     }
@@ -296,10 +349,34 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const addCourseware = (courseware: CoursewareData) => {
     setCoursewares((prev) => {
+      // 检查是否已存在相同的课件（通过sourcePath或完整仓库信息判断）
+      const isDuplicate = prev.some(cw => {
+        if (courseware.sourcePath && cw.sourcePath === courseware.sourcePath) {
+          return true;
+        }
+        if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath &&
+            cw.platform === courseware.platform &&
+            cw.owner === courseware.owner &&
+            cw.repo === courseware.repo &&
+            cw.filePath === courseware.filePath) {
+          return true;
+        }
+        return false;
+      });
+
+      if (isDuplicate) {
+        console.log('[CoursewareContext] 课件已存在，跳过添加:', courseware.title);
+        return prev; // 不添加重复课件
+      }
+
       const newIndex = prev.length;
       setCurrentCoursewareIndex(newIndex); // 设置为新添加的课件索引
-      // 确保用户上传的课件标记为非预编译
-      const newCourseware = { ...courseware, isBundled: false };
+      // 根据课件是否已有isBundled标记来设置
+      const newCourseware = { 
+        ...courseware, 
+        isBundled: courseware.isBundled !== undefined ? courseware.isBundled : false 
+      };
+      console.log('[CoursewareContext] 添加新课件:', newCourseware.title, '索引:', newIndex);
       return [...prev, newCourseware];
     });
   };

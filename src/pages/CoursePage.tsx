@@ -36,7 +36,15 @@ const CoursePage: React.FC = () => {
       if (targetIndex >= 0) {
         setLoading(false);
         const targetPageIndex = pendingNavigation.targetPageIndex ?? 0;
-        navigate(`/player/${targetIndex}/${targetPageIndex}`, { replace: true });
+        const courseware = coursewares[targetIndex];
+        // 使用语义化URL跳转
+        if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath) {
+          const courseFileName = courseware.filePath.split('/').pop()?.replace('.html', '') || '';
+          const folder = courseware.groupId || '';
+          navigate(`/${courseware.platform}/${courseware.owner}/${courseware.repo}/${folder}/${courseFileName}/${targetPageIndex}`, { replace: true });
+        } else {
+          navigate(`/player/${targetIndex}/${targetPageIndex}`, { replace: true });
+        }
         setPendingNavigation(null);
       }
     }
@@ -96,9 +104,16 @@ const CoursePage: React.FC = () => {
     // 检查目标课件是否已经在使用列表中
     const existingIndex = coursewares.findIndex(cw => cw.sourcePath === targetCourseware.sourcePath);
     if (existingIndex >= 0) {
-      // 如果已存在，直接跳转
+      // 如果已存在，使用语义化URL跳转
       setLoading(false);
-      navigate(`/player/${existingIndex}/${targetPageIndex}`, { replace: true });
+      const courseware = coursewares[existingIndex];
+      if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath) {
+        const courseFileName = courseware.filePath.split('/').pop()?.replace('.html', '') || '';
+        const folder = courseware.groupId || '';
+        navigate(`/${courseware.platform}/${courseware.owner}/${courseware.repo}/${folder}/${courseFileName}/${targetPageIndex}`, { replace: true });
+      } else {
+        navigate(`/player/${existingIndex}/${targetPageIndex}`, { replace: true });
+      }
       return;
     }
 

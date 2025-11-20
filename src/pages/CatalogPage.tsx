@@ -47,7 +47,16 @@ const CatalogPage: React.FC = () => {
                 title={
                   <Button
                     type="link"
-                    onClick={() => navigate(`/player/${currentCoursewareIndex}/${index}`)}
+                    onClick={() => {
+                      // 使用语义化URL
+                      if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath) {
+                        const courseFileName = courseware.filePath.split('/').pop()?.replace('.html', '') || '';
+                        const folder = courseware.groupId || '';
+                        navigate(`/${courseware.platform}/${courseware.owner}/${courseware.repo}/${folder}/${courseFileName}/${index}`);
+                      } else {
+                        navigate(`/player/${currentCoursewareIndex}/${index}`);
+                      }
+                    }}
                     style={{ padding: 0, height: 'auto' }}
                   >
                     {page.title || `第${index + 1}页`}

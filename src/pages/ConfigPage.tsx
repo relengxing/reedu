@@ -25,6 +25,7 @@ const ConfigPage: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
   const {
     coursewares,
+    setCoursewares,
     addCourseware,
     removeCourseware,
     reorderCoursewares,
@@ -221,6 +222,24 @@ const ConfigPage: React.FC = () => {
     }
   };
 
+  // 清理缓存（清理localStorage中的课件数据）
+  const handleClearCache = () => {
+    try {
+      localStorage.removeItem('reedu_coursewares');
+      localStorage.removeItem('reedu_current_courseware_index');
+      // 清空当前课件列表
+      setCoursewares([]);
+      setCurrentCoursewareIndex(0);
+      message.success('缓存已清理，即将刷新页面');
+      // 刷新页面以重新加载
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      message.error('清理缓存失败');
+    }
+  };
+
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
       <Title level={2}>配置中心</Title>
@@ -239,6 +258,17 @@ const ConfigPage: React.FC = () => {
                   description="添加仓库后,系统会自动加载仓库中的课件。您可以绑定多个仓库。"
                   type="info"
                   showIcon
+                  action={
+                    <Popconfirm
+                      title="确定要清理缓存吗?"
+                      description="这将清除所有本地缓存的课件数据并刷新页面"
+                      onConfirm={handleClearCache}
+                    >
+                      <Button size="small" danger>
+                        清理缓存
+                      </Button>
+                    </Popconfirm>
+                  }
                 />
 
                 <Card>

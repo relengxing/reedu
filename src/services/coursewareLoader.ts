@@ -285,6 +285,7 @@ export async function loadCoursewaresFromRepos(repos?: CoursewareRepoConfig[]): 
   }
 
   console.log(`[CoursewareLoader] 开始从 ${repoList.length} 个仓库加载课件`);
+  console.log(`[CoursewareLoader] 仓库列表:`, repoList.map(r => r.baseUrl));
 
   const allCoursewares: CoursewareData[] = [];
   const allGroups: CoursewareGroup[] = [];
@@ -293,7 +294,10 @@ export async function loadCoursewaresFromRepos(repos?: CoursewareRepoConfig[]): 
   // 从每个仓库加载课件
   for (const repo of repoList) {
     try {
+      console.log(`[CoursewareLoader] 正在加载仓库: ${repo.baseUrl}`);
       const { coursewares, groups } = await loadCoursewaresFromSingleRepo(repo);
+      
+      console.log(`[CoursewareLoader] 从仓库 ${repo.baseUrl} 加载了 ${groups.length} 个组:`, groups.map(g => g.id));
       
       // 合并课件
       allCoursewares.push(...coursewares);
@@ -302,14 +306,19 @@ export async function loadCoursewaresFromRepos(repos?: CoursewareRepoConfig[]): 
       for (const group of groups) {
         const existingGroup = groupMap.get(group.id);
         if (existingGroup) {
+          console.log(`[CoursewareLoader] 发现重复的组ID: ${group.id}，合并课件列表`);
           // 合并课件列表，避免重复
           const existingPaths = new Set(existingGroup.coursewares.map(cw => cw.sourcePath));
           const newCoursewares = group.coursewares.filter(cw => !existingPaths.has(cw.sourcePath));
+          console.log(`[CoursewareLoader] 组 ${group.id}: 已有 ${existingGroup.coursewares.length} 个课件，新增 ${newCoursewares.length} 个课件`);
           existingGroup.coursewares.push(...newCoursewares);
         } else {
+          console.log(`[CoursewareLoader] 添加新组: ${group.id}，包含 ${group.coursewares.length} 个课件`);
           groupMap.set(group.id, { ...group });
         }
       }
+      
+      console.log(`[CoursewareLoader] 当前 groupMap 大小: ${groupMap.size}`);
     } catch (error) {
       console.error(`[CoursewareLoader] 从仓库 ${repo.baseUrl} 加载失败:`, error);
       // 继续加载其他仓库
@@ -320,6 +329,7 @@ export async function loadCoursewaresFromRepos(repos?: CoursewareRepoConfig[]): 
   allGroups.push(...Array.from(groupMap.values()));
 
   console.log(`[CoursewareLoader] 总共加载 ${allCoursewares.length} 个课件，分为 ${allGroups.length} 个组`);
+  console.log(`[CoursewareLoader] 最终组列表:`, allGroups.map(g => ({ id: g.id, name: g.name, count: g.coursewares.length })));
   
   return {
     coursewares: allCoursewares,

@@ -1,7 +1,7 @@
 /**
  * 动态课件页面
  * 处理新路由格式: /:platform/:owner/:repo/:folder/:course/:pageIndex?
- * 按需加载课件HTML
+ * 按需加载课件HTML并直接显示，不跳转到播放器
  */
 
 import React, { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { Spin, Typography, Button, message } from 'antd';
 import { parseCoursewareUrlPath } from '../utils/urlParser';
 import { useCourseware } from '../context/CoursewareContext';
 import { parseHTMLCourseware, setAudioPathMap } from '../utils/coursewareParser';
+import CoursewarePlayer from './CoursewarePlayer';
 import type { CoursewareData } from '../types';
 
 const { Title, Text } = Typography;
@@ -23,12 +24,16 @@ const DynamicCoursePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [coursewareData, setCoursewareData] = useState<CoursewareData | null>(null);
+  const [coursewareIndex, setCoursewareIndex] = useState<number>(-1);
+  const [pageIndex, setPageIndex] = useState<number>(0);
+  const [shouldRenderPlayer, setShouldRenderPlayer] = useState(false);
 
   useEffect(() => {
     const loadCourseware = async () => {
       try {
         setLoading(true);
         setError(null);
+        setShouldRenderPlayer(false); // 重置播放器状态
 
         // 解析URL路径
         // 路径格式: /:platform/:owner/:repo/其余部分
@@ -55,7 +60,9 @@ const DynamicCoursePage: React.FC = () => {
 
         const folder = decodeURIComponent(remainingParts[0]);
         const courseFileName = decodeURIComponent(remainingParts[1]);
-        const pageIndex = remainingParts[2] ? parseInt(remainingParts[2], 10) : 0;
+        const currentPageIndex = remainingParts[2] ? parseInt(remainingParts[2], 10) : 0;
+        
+        setPageIndex(currentPageIndex);
 
         console.log('[DynamicCoursePage] 解析参数:', {
           platform,
@@ -63,7 +70,7 @@ const DynamicCoursePage: React.FC = () => {
           repo,
           folder,
           courseFileName,
-          pageIndex,
+          pageIndex: currentPageIndex,
         });
 
         // 构建课件的完整URL
@@ -74,16 +81,24 @@ const DynamicCoursePage: React.FC = () => {
         const coursewarePath = `${folder}/${courseFileName}.html`;
         const coursewareUrl = `${baseUrl}${coursewarePath}`;
 
-        // 检查是否已经加载过这个课件
+        // 检查是否已经加载过这个课件（检查多种可能的标识）
         const existingIndex = coursewares.findIndex(
-          cw => cw.sourcePath === coursewareUrl
+          cw => cw.sourcePath === coursewareUrl ||
+                (cw.platform === platform &&
+                 cw.owner === owner &&
+                 cw.repo === repo &&
+                 cw.groupId === folder &&
+                 cw.filePath === `${folder}/${courseFileName}.html`)
         );
 
         if (existingIndex >= 0) {
-          // 已存在,直接跳转到播放器
-          console.log('[DynamicCoursePage] 课件已存在,跳转到播放器');
+          // 已存在,直接显示
+          console.log('[DynamicCoursePage] 课件已存在，索引:', existingIndex);
           setCurrentCoursewareIndex(existingIndex);
-          navigate(`/player/${existingIndex}/${pageIndex}`, { replace: true });
+          setCoursewareIndex(existingIndex);
+          setCoursewareData(coursewares[existingIndex]);
+          setShouldRenderPlayer(true);
+          setLoading(false);
           return;
         }
 
@@ -133,19 +148,24 @@ const DynamicCoursePage: React.FC = () => {
         courseware.sourcePath = coursewareUrl;
         courseware.groupId = folder;
         courseware.groupName = groupName;
+        // 添加仓库信息
+        courseware.platform = platform;
+        courseware.owner = owner;
+        courseware.repo = repo;
+        courseware.branch = 'main';
+        courseware.filePath = `${folder}/${courseFileName}.html`;
 
         setCoursewareData(courseware);
 
         // 添加到课件列表
         addCourseware(courseware);
 
-        // 跳转到播放器
-        // 等待课件添加完成后再跳转
-        setTimeout(() => {
-          const newIndex = coursewares.length;
-          setCurrentCoursewareIndex(newIndex);
-          navigate(`/player/${newIndex}/${pageIndex}`, { replace: true });
-        }, 100);
+        // 使用状态标记，等待下一次渲染时coursewares更新后再显示
+        // 新课件的索引应该是当前长度（添加前的长度）
+        const newIndex = coursewares.length;
+        setCurrentCoursewareIndex(newIndex);
+        setCoursewareIndex(newIndex);
+        console.log('[DynamicCoursePage] 课件已添加，预期索引:', newIndex);
 
       } catch (err) {
         console.error('[DynamicCoursePage] 加载课件失败:', err);
@@ -157,7 +177,16 @@ const DynamicCoursePage: React.FC = () => {
     };
 
     loadCourseware();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
+
+  // 监听coursewares变化，当课件添加完成后显示播放器
+  useEffect(() => {
+    if (coursewareIndex >= 0 && coursewareIndex < coursewares.length && coursewareData && !shouldRenderPlayer) {
+      console.log('[DynamicCoursePage] 课件已就绪，显示播放器，索引:', coursewareIndex);
+      setShouldRenderPlayer(true);
+    }
+  }, [coursewares, coursewareIndex, coursewareData, shouldRenderPlayer]);
 
   if (loading) {
     return (
@@ -190,7 +219,13 @@ const DynamicCoursePage: React.FC = () => {
     );
   }
 
-  // 正常情况下会自动跳转,不应该显示这个页面
+  // 渲染播放器
+  if (shouldRenderPlayer && coursewareIndex >= 0) {
+    console.log('[DynamicCoursePage] 渲染播放器，索引:', coursewareIndex, '页面:', pageIndex);
+    return <CoursewarePlayer />;
+  }
+
+  // 加载中或等待状态
   return (
     <div style={{
       padding: '48px',
@@ -202,7 +237,7 @@ const DynamicCoursePage: React.FC = () => {
       minHeight: '50vh'
     }}>
       <Spin size="large" />
-      <Text style={{ marginTop: '16px', display: 'block' }}>正在跳转到播放器...</Text>
+      <Text style={{ marginTop: '16px', display: 'block' }}>正在准备课件...</Text>
     </div>
   );
 };
