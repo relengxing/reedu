@@ -233,7 +233,7 @@ async function loadCoursewaresFromSingleRepo(config: CoursewareRepoConfig): Prom
         groupCoursewares.push(courseware);
         allCoursewares.push(courseware);
         
-        console.log(`[CoursewareLoader] 成功加载课件: ${groupName}/${filename}`);
+        console.log(`[CoursewareLoader] 成功加载课件: ${groupName}/${filename}, 页数: ${courseware.pages.length}`);
       } catch (error) {
         console.error(`[CoursewareLoader] 加载课件失败: ${filePath}`, error);
       }

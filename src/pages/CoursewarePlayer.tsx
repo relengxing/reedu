@@ -609,6 +609,15 @@ const CoursewarePlayer: React.FC = () => {
         }}
         sandbox="allow-same-origin allow-scripts allow-forms"
         title="课件内容"
+        onLoad={() => {
+          if (!courseware.fullHTML || courseware.fullHTML.trim() === '') {
+            console.error('[CoursewarePlayer] fullHTML is empty!', {
+              title: courseware.title,
+              sourcePath: courseware.sourcePath,
+              hasPages: courseware.pages?.length > 0,
+            });
+          }
+        }}
       />
     </div>
   );

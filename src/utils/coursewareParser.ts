@@ -41,6 +41,8 @@ export const parseHTMLCourseware = (htmlContent: string, filename: string): Cour
   // 提取所有section或标记的页面
   const sections = Array.from(doc.querySelectorAll('section, [data-section]'));
   
+  console.log(`[CoursewareParser] 文件: ${filename}, 找到 ${sections.length} 个section`);
+  
   let pages: Page[] = [];
 
   if (sections.length > 0) {
@@ -78,6 +80,7 @@ export const parseHTMLCourseware = (htmlContent: string, filename: string): Cour
     });
   } else {
     // 如果没有section标记，将整个body作为一个页面
+    console.log(`[CoursewareParser] 文件: ${filename}, 未找到section，使用body作为单页`);
     pages = [
       {
         id: 'page-0',
@@ -87,6 +90,8 @@ export const parseHTMLCourseware = (htmlContent: string, filename: string): Cour
       },
     ];
   }
+  
+  console.log(`[CoursewareParser] 文件: ${filename}, 解析完成，共 ${pages.length} 页`);
 
   // 保留完整HTML（包括script标签，因为课件需要JavaScript功能）
   // 直接使用原始HTML内容，避免XMLSerializer序列化导致的字符转义问题

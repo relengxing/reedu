@@ -19,7 +19,7 @@ const DynamicCoursePage: React.FC = () => {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { coursewares, addCourseware, setCurrentCoursewareIndex } = useCourseware();
+  const { coursewares, addCourseware, setCurrentCoursewareIndex, bundledCoursewareGroups, addBundledCourseware } = useCourseware();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,14 +81,106 @@ const DynamicCoursePage: React.FC = () => {
         const coursewarePath = `${folder}/${courseFileName}.html`;
         const coursewareUrl = `${baseUrl}${coursewarePath}`;
 
-        // 检查是否已经加载过这个课件（检查多种可能的标识）
+        // 构建课程ID用于匹配课件组
+        const courseId = `${platform}/${owner}/${repo}/${folder}`;
+
+        // 首先检查是否在已加载的课件组中
+        const existingGroup = bundledCoursewareGroups.find(
+          g => g.courseId === courseId || 
+               (g.platform === platform && g.owner === owner && g.repo === repo && g.folder === folder)
+        );
+
+        if (existingGroup && existingGroup.coursewares.length > 0) {
+          console.log('[DynamicCoursePage] 找到已加载的课件组，包含', existingGroup.coursewares.length, '个课件');
+          
+          // 将该组的所有课件添加到使用列表（如果还没有添加）
+          let targetCourseware: CoursewareData | null = null;
+          let needsToAdd = false;
+          
+          for (const cw of existingGroup.coursewares) {
+            // 检查是否已经在使用列表中
+            const existingIndex = coursewares.findIndex(
+              usedCw => usedCw.sourcePath === cw.sourcePath ||
+                        (usedCw.platform === platform &&
+                         usedCw.owner === owner &&
+                         usedCw.repo === repo &&
+                         usedCw.groupId === folder &&
+                         usedCw.filePath === cw.filePath)
+            );
+            
+            if (existingIndex < 0) {
+              // 如果不在使用列表中，添加它
+              addBundledCourseware(cw);
+              needsToAdd = true;
+            }
+            
+            // 找到目标课件（URL中指定的那个）
+            if (!targetCourseware && 
+                (cw.filePath === coursewarePath || 
+                 cw.filePath?.endsWith(`${courseFileName}.html`) ||
+                 (cw.filePath && cw.filePath.split('/').pop()?.replace('.html', '') === courseFileName))) {
+              targetCourseware = cw;
+            }
+          }
+          
+          // 如果找到了目标课件
+          if (targetCourseware) {
+            // 再次检查目标课件是否已经在coursewares中
+            const finalIndex = coursewares.findIndex(
+              usedCw => usedCw.sourcePath === targetCourseware!.sourcePath ||
+                        (usedCw.platform === platform &&
+                         usedCw.owner === owner &&
+                         usedCw.repo === repo &&
+                         usedCw.groupId === folder &&
+                         usedCw.filePath === targetCourseware!.filePath)
+            );
+            
+            if (finalIndex >= 0) {
+              // 已经在coursewares中，直接使用
+              console.log('[DynamicCoursePage] 使用已加载的课件组，目标索引:', finalIndex);
+              console.log('[DynamicCoursePage] coursewares总数:', coursewares.length);
+              console.log('[DynamicCoursePage] 目标课件数据:', coursewares[finalIndex]?.title, '页数:', coursewares[finalIndex]?.pages?.length);
+              setCurrentCoursewareIndex(finalIndex);
+              setCoursewareIndex(finalIndex);
+              setCoursewareData(coursewares[finalIndex]);
+              setShouldRenderPlayer(true);
+              setLoading(false);
+              return;
+            } else if (needsToAdd) {
+              // 需要等待coursewares更新
+              console.log('[DynamicCoursePage] 已添加课件到列表，等待更新，预期索引:', coursewares.length);
+              setCoursewareData(targetCourseware);
+              setCoursewareIndex(coursewares.length);
+              setCurrentCoursewareIndex(coursewares.length);
+              setLoading(false);
+              // 不设置shouldRenderPlayer，等待useEffect检测到coursewares更新后再显示
+              return;
+            } else {
+              // 目标课件已经在列表中，但是上面的查找没找到（不应该发生）
+              console.warn('[DynamicCoursePage] 目标课件状态异常，尝试按索引查找');
+              // 尝试在 coursewares 中查找
+              const cwIndex = coursewares.findIndex(c => c.groupId === folder);
+              if (cwIndex >= 0) {
+                console.log('[DynamicCoursePage] 找到课件，索引:', cwIndex);
+                setCurrentCoursewareIndex(cwIndex);
+                setCoursewareIndex(cwIndex);
+                setCoursewareData(coursewares[cwIndex]);
+                setShouldRenderPlayer(true);
+                setLoading(false);
+                return;
+              }
+            }
+          }
+        }
+
+        // 如果没有找到已加载的组，检查单个课件是否已存在
         const existingIndex = coursewares.findIndex(
           cw => cw.sourcePath === coursewareUrl ||
                 (cw.platform === platform &&
                  cw.owner === owner &&
                  cw.repo === repo &&
                  cw.groupId === folder &&
-                 cw.filePath === `${folder}/${courseFileName}.html`)
+                 cw.filePath === coursewarePath)
         );
 
         if (existingIndex >= 0) {
@@ -102,8 +194,9 @@ const DynamicCoursePage: React.FC = () => {
           return;
         }
 
-        // 加载manifest.json来获取组信息(可选)
+        // 加载manifest.json来获取组信息
         let groupName = folder;
+        let groupFiles: string[] = [];
         try {
           const manifestUrl = `${baseUrl}manifest.json`;
           const manifestResponse = await fetch(manifestUrl);
@@ -112,60 +205,130 @@ const DynamicCoursePage: React.FC = () => {
             const group = manifest.groups?.find((g: any) => g.id === folder);
             if (group) {
               groupName = group.name;
+              groupFiles = group.files || [];
+              console.log('[DynamicCoursePage] 从manifest.json找到组，包含', groupFiles.length, '个文件');
             }
           }
         } catch (e) {
           console.warn('[DynamicCoursePage] 无法加载manifest.json:', e);
         }
 
-        // 加载课件HTML
-        console.log('[DynamicCoursePage] 加载课件:', coursewareUrl);
-        const response = await fetch(coursewareUrl);
-        if (!response.ok) {
-          throw new Error(`加载课件失败: HTTP ${response.status}`);
+        // 如果manifest中有该组的所有文件，加载整个组
+        if (groupFiles.length > 0) {
+          console.log('[DynamicCoursePage] 开始加载整个课件组，共', groupFiles.length, '个文件');
+          
+          const audioPathMap = new Map<string, string>();
+          let targetCourseware: CoursewareData | null = null;
+          let targetIndex = coursewares.length;
+          
+          // 加载该组的所有课件
+          for (const filePath of groupFiles) {
+            try {
+              const fileUrl = `${baseUrl}${filePath}`;
+              console.log('[DynamicCoursePage] 加载课件:', filePath);
+              
+              const response = await fetch(fileUrl);
+              if (!response.ok) {
+                console.warn(`[DynamicCoursePage] 加载失败: ${filePath}, HTTP ${response.status}`);
+                continue;
+              }
+              
+              const htmlContent = await response.text();
+              const filename = filePath.split('/').pop()?.replace(/\.html$/, '') || '未命名';
+              
+              // 处理音频路径
+              const audioRegex = /new\s+Audio\s*\(\s*(['"])([^'"]+\.mp3)\1\s*\)/g;
+              let match;
+              while ((match = audioRegex.exec(htmlContent)) !== null) {
+                const audioPath = match[2];
+                const audioUrl = audioPath.startsWith('./')
+                  ? `${baseUrl}${folder}/${audioPath.replace(/^\.\//, '')}`
+                  : `${baseUrl}${audioPath}`;
+                audioPathMap.set(audioPath, audioUrl);
+                audioPathMap.set(`./${audioPath}`, audioUrl);
+              }
+              
+              // 解析课件
+              const courseware = parseHTMLCourseware(htmlContent, filename);
+              courseware.isBundled = true;
+              courseware.sourcePath = fileUrl;
+              courseware.groupId = folder;
+              courseware.groupName = groupName;
+              courseware.platform = platform;
+              courseware.owner = owner;
+              courseware.repo = repo;
+              courseware.branch = 'main';
+              courseware.filePath = filePath;
+              
+              // 添加到课件列表
+              addCourseware(courseware);
+              
+              // 检查是否是目标课件
+              if (filePath === coursewarePath || filename === courseFileName) {
+                targetCourseware = courseware;
+                targetIndex = coursewares.length; // 添加前的长度
+              }
+            } catch (err) {
+              console.error(`[DynamicCoursePage] 加载课件失败: ${filePath}`, err);
+            }
+          }
+          
+          // 设置音频路径映射
+          setAudioPathMap(audioPathMap);
+          
+          if (targetCourseware) {
+            console.log('[DynamicCoursePage] 课件组加载完成，目标索引:', targetIndex);
+            setCoursewareData(targetCourseware);
+            setCurrentCoursewareIndex(targetIndex);
+            setCoursewareIndex(targetIndex);
+          } else {
+            throw new Error('未找到目标课件');
+          }
+        } else {
+          // 如果没有manifest或组信息，只加载单个文件（降级处理）
+          console.log('[DynamicCoursePage] 未找到组信息，只加载单个课件:', coursewareUrl);
+          const response = await fetch(coursewareUrl);
+          if (!response.ok) {
+            throw new Error(`加载课件失败: HTTP ${response.status}`);
+          }
+
+          const htmlContent = await response.text();
+
+          // 处理音频路径
+          const audioPathMap = new Map<string, string>();
+          const audioRegex = /new\s+Audio\s*\(\s*(['"])([^'"]+\.mp3)\1\s*\)/g;
+          let match;
+          while ((match = audioRegex.exec(htmlContent)) !== null) {
+            const audioPath = match[2];
+            const audioUrl = audioPath.startsWith('./')
+              ? `${baseUrl}${folder}/${audioPath.replace(/^\.\//, '')}`
+              : `${baseUrl}${audioPath}`;
+            audioPathMap.set(audioPath, audioUrl);
+            audioPathMap.set(`./${audioPath}`, audioUrl);
+          }
+
+          setAudioPathMap(audioPathMap);
+
+          // 解析课件
+          const courseware = parseHTMLCourseware(htmlContent, courseFileName);
+          courseware.isBundled = true;
+          courseware.sourcePath = coursewareUrl;
+          courseware.groupId = folder;
+          courseware.groupName = groupName;
+          courseware.platform = platform;
+          courseware.owner = owner;
+          courseware.repo = repo;
+          courseware.branch = 'main';
+          courseware.filePath = coursewarePath;
+
+          setCoursewareData(courseware);
+          addCourseware(courseware);
+          
+          const newIndex = coursewares.length;
+          setCurrentCoursewareIndex(newIndex);
+          setCoursewareIndex(newIndex);
+          console.log('[DynamicCoursePage] 单个课件已添加，预期索引:', newIndex);
         }
-
-        const htmlContent = await response.text();
-
-        // 处理音频路径
-        const audioPathMap = new Map<string, string>();
-        const audioRegex = /new\s+Audio\s*\(\s*(['"])([^'"]+\.mp3)\1\s*\)/g;
-        let match;
-        while ((match = audioRegex.exec(htmlContent)) !== null) {
-          const audioPath = match[2];
-          const audioUrl = audioPath.startsWith('./')
-            ? `${baseUrl}${folder}/${audioPath.replace(/^\.\//, '')}`
-            : `${baseUrl}${audioPath}`;
-          audioPathMap.set(audioPath, audioUrl);
-          audioPathMap.set(`./${audioPath}`, audioUrl);
-        }
-
-        setAudioPathMap(audioPathMap);
-
-        // 解析课件
-        const courseware = parseHTMLCourseware(htmlContent, courseFileName);
-        courseware.isBundled = true;
-        courseware.sourcePath = coursewareUrl;
-        courseware.groupId = folder;
-        courseware.groupName = groupName;
-        // 添加仓库信息
-        courseware.platform = platform;
-        courseware.owner = owner;
-        courseware.repo = repo;
-        courseware.branch = 'main';
-        courseware.filePath = `${folder}/${courseFileName}.html`;
-
-        setCoursewareData(courseware);
-
-        // 添加到课件列表
-        addCourseware(courseware);
-
-        // 使用状态标记，等待下一次渲染时coursewares更新后再显示
-        // 新课件的索引应该是当前长度（添加前的长度）
-        const newIndex = coursewares.length;
-        setCurrentCoursewareIndex(newIndex);
-        setCoursewareIndex(newIndex);
-        console.log('[DynamicCoursePage] 课件已添加，预期索引:', newIndex);
 
       } catch (err) {
         console.error('[DynamicCoursePage] 加载课件失败:', err);
@@ -182,9 +345,36 @@ const DynamicCoursePage: React.FC = () => {
 
   // 监听coursewares变化，当课件添加完成后显示播放器
   useEffect(() => {
-    if (coursewareIndex >= 0 && coursewareIndex < coursewares.length && coursewareData && !shouldRenderPlayer) {
-      console.log('[DynamicCoursePage] 课件已就绪，显示播放器，索引:', coursewareIndex);
-      setShouldRenderPlayer(true);
+    if (coursewareIndex >= 0 && coursewareIndex < coursewares.length && !shouldRenderPlayer) {
+      // 如果coursewareData存在但不在coursewares中，尝试从coursewares中找到它
+      if (coursewareData) {
+        const foundIndex = coursewares.findIndex(
+          cw => cw.sourcePath === coursewareData.sourcePath ||
+                (cw.platform === coursewareData.platform &&
+                 cw.owner === coursewareData.owner &&
+                 cw.repo === coursewareData.repo &&
+                 cw.groupId === coursewareData.groupId &&
+                 cw.filePath === coursewareData.filePath)
+        );
+        
+        if (foundIndex >= 0 && foundIndex !== coursewareIndex) {
+          // 找到了，更新索引和数据
+          console.log('[DynamicCoursePage] 在coursewares中找到目标课件，更新索引:', foundIndex);
+          setCoursewareIndex(foundIndex);
+          setCurrentCoursewareIndex(foundIndex);
+          setCoursewareData(coursewares[foundIndex]);
+        }
+      }
+      
+      // 确保使用coursewares中的实际数据
+      if (coursewareIndex >= 0 && coursewareIndex < coursewares.length) {
+        const actualCourseware = coursewares[coursewareIndex];
+        if (actualCourseware) {
+          console.log('[DynamicCoursePage] 课件已就绪，显示播放器，索引:', coursewareIndex);
+          setCoursewareData(actualCourseware);
+          setShouldRenderPlayer(true);
+        }
+      }
     }
   }, [coursewares, coursewareIndex, coursewareData, shouldRenderPlayer]);
 
@@ -222,6 +412,11 @@ const DynamicCoursePage: React.FC = () => {
   // 渲染播放器
   if (shouldRenderPlayer && coursewareIndex >= 0) {
     console.log('[DynamicCoursePage] 渲染播放器，索引:', coursewareIndex, '页面:', pageIndex);
+    console.log('[DynamicCoursePage] 当前 coursewares 总数:', coursewares.length);
+    console.log('[DynamicCoursePage] coursewareIndex 在范围内:', coursewareIndex < coursewares.length);
+    if (coursewareIndex < coursewares.length) {
+      console.log('[DynamicCoursePage] 播放器将显示:', coursewares[coursewareIndex]?.title, '页数:', coursewares[coursewareIndex]?.pages?.length);
+    }
     return <CoursewarePlayer />;
   }
 

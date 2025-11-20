@@ -45,7 +45,7 @@ const restoreCoursewares = (externalCoursewares: CoursewareData[] = []): Coursew
         // 从外部加载的资源中恢复
         const found = externalCoursewares.find(cw => cw.sourcePath === item.sourcePath);
         if (found) {
-          // 使用找到的完整数据，但保留localStorage中的仓库信息（以防外部数据缺失）
+          // 使用找到的完整数据（包括fullHTML），但保留localStorage中的仓库信息（以防外部数据缺失）
           restored.push({
             ...found,
             platform: found.platform || item.platform,
@@ -55,21 +55,10 @@ const restoreCoursewares = (externalCoursewares: CoursewareData[] = []): Coursew
             filePath: found.filePath || item.filePath,
           });
         } else if (item.platform && item.owner && item.repo) {
-          // 如果外部资源未加载，但localStorage中有仓库信息，使用localStorage的数据
-          console.warn(`[CoursewareContext] 使用缓存的课件数据: ${item.sourcePath}`);
-          restored.push({
-            title: item.title || '未命名课件',
-            pages: item.pages || [],
-            fullHTML: '', // fullHTML会在需要时重新加载
-            isBundled: true,
-            sourcePath: item.sourcePath,
-            platform: item.platform,
-            owner: item.owner,
-            repo: item.repo,
-            branch: item.branch,
-            filePath: item.filePath,
-            groupId: item.groupId,
-          });
+          // 如果外部资源未加载，但localStorage中有仓库信息
+          // 由于没有fullHTML，跳过缓存数据，等待外部资源加载
+          console.warn(`[CoursewareContext] 外部资源未加载，跳过缓存课件（缺少fullHTML）: ${item.sourcePath}`);
+          continue;
         } else {
           console.warn(`[CoursewareContext] 无法找到课件且缺少仓库信息: ${item.sourcePath}`);
         }
@@ -88,6 +77,8 @@ const restoreCoursewares = (externalCoursewares: CoursewareData[] = []): Coursew
     }
     
     console.log(`[CoursewareContext] 从localStorage恢复了 ${restored.length} 个课件`);
+    console.log(`[CoursewareContext] 恢复的课件页数:`, restored.map(cw => `${cw.title}: ${cw.pages.length}页`));
+    console.log(`[CoursewareContext] 恢复的课件fullHTML状态:`, restored.map(cw => `${cw.title}: ${cw.fullHTML ? (cw.fullHTML.length > 100 ? `${(cw.fullHTML.length / 1024).toFixed(1)}KB` : 'empty') : 'null'}`));
     return restored;
   } catch (error) {
     console.error('[CoursewareContext] 恢复课件列表失败:', error);
@@ -100,7 +91,7 @@ const saveCoursewares = (coursewares: CoursewareData[]) => {
   try {
     const storedList: StoredCourseware[] = coursewares.map(cw => {
       if (cw.isBundled && cw.sourcePath) {
-        // 预编译课件存储标识和仓库信息
+        // 预编译课件存储标识和仓库信息，也保存pages字段（元数据较小）
         return {
           sourcePath: cw.sourcePath,
           isBundled: true,
@@ -112,6 +103,8 @@ const saveCoursewares = (coursewares: CoursewareData[]) => {
           filePath: cw.filePath,
           groupId: cw.groupId,
           title: cw.title,
+          // 保存pages字段，这样恢复时就有页面信息了
+          pages: cw.pages,
         };
       } else {
         // 用户上传的课件存储完整数据
@@ -248,15 +241,37 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       // 外部课件加载完成后，重新恢复课件列表（以便恢复外部仓库的课件）
       const restored = restoreCoursewares(loadedCoursewares);
-      // 检查是否有新的课件被恢复（通过比较sourcePath）
-      const currentSourcePaths = new Set(coursewares.map(cw => cw.sourcePath).filter(Boolean));
-      const restoredSourcePaths = new Set(restored.map(cw => cw.sourcePath).filter(Boolean));
-      const hasNewCoursewares = restored.some(cw => cw.sourcePath && !currentSourcePaths.has(cw.sourcePath));
       
-      if (hasNewCoursewares || restored.length > coursewares.length) {
-        // 如果有新的课件被恢复，更新课件列表
-        console.log(`[CoursewareContext] 外部课件加载完成，重新恢复课件列表: ${restored.length} 个（之前: ${coursewares.length} 个）`);
+      // 检查是否需要更新coursewares
+      let needsUpdate = false;
+      
+      // 1. 如果课件数量不同，需要更新
+      if (restored.length !== coursewares.length) {
+        needsUpdate = true;
+        console.log(`[CoursewareContext] 课件数量变化: ${coursewares.length} -> ${restored.length}`);
+      }
+      
+      // 2. 如果有课件的fullHTML为空，需要更新
+      if (!needsUpdate && coursewares.some(cw => !cw.fullHTML || cw.fullHTML.trim() === '')) {
+        needsUpdate = true;
+        console.log(`[CoursewareContext] 检测到课件缺少fullHTML，需要更新`);
+      }
+      
+      // 3. 如果有新的课件被恢复，需要更新
+      if (!needsUpdate) {
+        const currentSourcePaths = new Set(coursewares.map(cw => cw.sourcePath).filter(Boolean));
+        const hasNewCoursewares = restored.some(cw => cw.sourcePath && !currentSourcePaths.has(cw.sourcePath));
+        if (hasNewCoursewares) {
+          needsUpdate = true;
+          console.log(`[CoursewareContext] 检测到新课件`);
+        }
+      }
+      
+      if (needsUpdate) {
+        console.log(`[CoursewareContext] 外部课件加载完成，更新课件列表: ${restored.length} 个（之前: ${coursewares.length} 个）`);
         setCoursewares(restored);
+      } else {
+        console.log(`[CoursewareContext] 外部课件加载完成，coursewares 无需更新`);
       }
       
       console.log('[CoursewareContext] 成功从外部仓库加载课件');

@@ -115,7 +115,7 @@ const NavigationPage: React.FC = () => {
                 transition: 'all 0.3s',
               }}
               onClick={() => handleGroupClick(group)}
-              bodyStyle={{ padding: '20px' }}
+              styles={{ body: { padding: '20px' } }}
             >
               <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -151,7 +151,7 @@ const NavigationPage: React.FC = () => {
                 {group.coursewares.length > 0 && group.coursewares[0].platform && (
                   <div style={{ marginTop: '12px' }}>
                     <Text type="secondary" style={{ fontSize: '12px' }}>课程链接（第1页）：</Text>
-                    <Input.Group compact style={{ marginTop: '4px' }}>
+                    <Space.Compact style={{ marginTop: '4px', width: '100%' }}>
                       <Input
                         readOnly
                         value={(() => {
@@ -180,7 +180,7 @@ const NavigationPage: React.FC = () => {
                       >
                         复制
                       </Button>
-                    </Input.Group>
+                    </Space.Compact>
                   </div>
                 )}
 
