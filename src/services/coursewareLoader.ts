@@ -5,16 +5,20 @@
 
 import type { CoursewareData, CoursewareGroup } from '../types';
 import { parseHTMLCourseware, setAudioPathMap } from '../utils/coursewareParser';
-import { hashStringSync } from '../utils/md5';
+import { parseRawUrl, type ParsedRepoUrl } from '../utils/urlParser';
+
+/**
+ * 从raw URL解析仓库信息
+ */
+function parseRepoInfoFromRawUrl(rawUrl: string): ParsedRepoUrl | null {
+  return parseRawUrl(rawUrl);
+}
 
 // 课件仓库配置（简化版，URL中已包含分支）
 export interface CoursewareRepoConfig {
   // Git仓库的raw内容URL（必须包含分支，例如：https://raw.githubusercontent.com/user/repo/main/）
   baseUrl: string;
 }
-
-// 默认仓库
-export const DEFAULT_REPO_URL = 'https://raw.githubusercontent.com/relengxing/reedu-coursewares/main/';
 
 // localStorage键名
 const STORAGE_KEY = 'reedu_courseware_repos';
@@ -27,18 +31,13 @@ export function getCoursewareRepos(): CoursewareRepoConfig[] {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const repos = JSON.parse(stored) as CoursewareRepoConfig[];
-      // 确保默认仓库在列表中
-      const hasDefault = repos.some(r => r.baseUrl === DEFAULT_REPO_URL);
-      if (!hasDefault) {
-        return [{ baseUrl: DEFAULT_REPO_URL }, ...repos];
-      }
       return repos;
     }
-    // 如果没有存储的配置，返回默认仓库
-    return [{ baseUrl: DEFAULT_REPO_URL }];
+    // 如果没有存储的配置，返回空数组
+    return [];
   } catch (error) {
     console.error('[CoursewareLoader] 读取仓库配置失败:', error);
-    return [{ baseUrl: DEFAULT_REPO_URL }];
+    return [];
   }
 }
 
@@ -47,11 +46,8 @@ export function getCoursewareRepos(): CoursewareRepoConfig[] {
  */
 export function saveCoursewareRepos(repos: CoursewareRepoConfig[]) {
   try {
-    // 确保默认仓库在列表中（如果被删除，自动添加回来）
-    const hasDefault = repos.some(r => r.baseUrl === DEFAULT_REPO_URL);
-    const reposToSave = hasDefault ? repos : [{ baseUrl: DEFAULT_REPO_URL }, ...repos];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(reposToSave));
-    console.log('[CoursewareLoader] 已保存仓库配置:', reposToSave);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(repos));
+    console.log('[CoursewareLoader] 已保存仓库配置:', repos);
   } catch (error) {
     console.error('[CoursewareLoader] 保存仓库配置失败:', error);
   }
@@ -101,10 +97,6 @@ export function addCoursewareRepo(repo: CoursewareRepoConfig) {
  * 删除仓库
  */
 export function removeCoursewareRepo(baseUrl: string) {
-  // 不能删除默认仓库
-  if (baseUrl === DEFAULT_REPO_URL) {
-    throw new Error('不能删除默认仓库');
-  }
   const repos = getCoursewareRepos();
   const filtered = repos.filter(r => r.baseUrl !== baseUrl);
   saveCoursewareRepos(filtered);
@@ -182,6 +174,13 @@ async function loadCoursewaresFromSingleRepo(config: CoursewareRepoConfig): Prom
 }> {
   console.log('[CoursewareLoader] 开始从仓库加载课件:', config.baseUrl);
 
+  // 解析仓库信息
+  const repoInfo = parseRepoInfoFromRawUrl(config.baseUrl);
+  if (!repoInfo) {
+    console.error('[CoursewareLoader] 无法解析仓库信息:', config.baseUrl);
+    return { coursewares: [], groups: [] };
+  }
+
   // 加载manifest.json
   const manifest = await loadManifest(config);
   
@@ -224,6 +223,12 @@ async function loadCoursewaresFromSingleRepo(config: CoursewareRepoConfig): Prom
         courseware.sourcePath = `${config.baseUrl}${filePath}`;
         courseware.groupId = groupId;
         courseware.groupName = groupName;
+        // 添加仓库信息
+        courseware.platform = repoInfo.platform;
+        courseware.owner = repoInfo.owner;
+        courseware.repo = repoInfo.repo;
+        courseware.branch = repoInfo.branch || 'main';
+        courseware.filePath = filePath;
 
         groupCoursewares.push(courseware);
         allCoursewares.push(courseware);
@@ -236,12 +241,21 @@ async function loadCoursewaresFromSingleRepo(config: CoursewareRepoConfig): Prom
 
     // 创建课件组
     if (groupCoursewares.length > 0) {
-      const courseId = hashStringSync(groupId);
+      // 使用语义化的课程ID：platform/owner/repo/folder
+      const folder = groupId; // 文件夹名就是groupId
+      const courseId = `${repoInfo.platform}/${repoInfo.owner}/${repoInfo.repo}/${folder}`;
+      
       coursewareGroups.push({
         id: groupId,
         name: groupName,
         courseId: courseId,
         coursewares: groupCoursewares,
+        // 添加仓库信息
+        platform: repoInfo.platform,
+        owner: repoInfo.owner,
+        repo: repoInfo.repo,
+        branch: repoInfo.branch || 'main',
+        folder: folder,
       });
     }
   }

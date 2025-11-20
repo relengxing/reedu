@@ -33,25 +33,33 @@ const NavigationPage: React.FC = () => {
 
     const firstCourseware = group.coursewares[0];
     
-    // 检查第一个课件是否已经在使用列表中
-    const existingIndex = coursewares.findIndex(cw => cw.sourcePath === firstCourseware.sourcePath);
-    if (existingIndex >= 0) {
-      // 如果已存在，直接跳转
-      navigate(`/player/${existingIndex}/0`);
-      return;
-    }
-
-    // 如果不存在，添加该组的所有课件到使用列表
-    group.coursewares.forEach(cw => {
-      // 检查是否已经在使用列表中
-      const isAlreadyAdded = cw.sourcePath && coursewares.some(usedCw => usedCw.sourcePath === cw.sourcePath);
-      if (!isAlreadyAdded) {
-        addBundledCourseware(cw);
+    // 使用语义化URL跳转
+    if (firstCourseware.platform && firstCourseware.owner && firstCourseware.repo && firstCourseware.filePath) {
+      // 构建语义化URL: /platform/owner/repo/folder/course
+      const pathParts = firstCourseware.filePath.split('/');
+      const courseFileName = pathParts[pathParts.length - 1].replace('.html', '');
+      const folder = group.folder || group.id;
+      
+      const semanticUrl = `/${firstCourseware.platform}/${firstCourseware.owner}/${firstCourseware.repo}/${folder}/${courseFileName}/0`;
+      navigate(semanticUrl);
+    } else {
+      // 降级处理：使用旧的索引方式
+      const existingIndex = coursewares.findIndex(cw => cw.sourcePath === firstCourseware.sourcePath);
+      if (existingIndex >= 0) {
+        navigate(`/player/${existingIndex}/0`);
+        return;
       }
-    });
-    
-    // 设置待跳转的课件，useEffect会监听状态变化并自动跳转
-    setPendingNavigation({ sourcePath: firstCourseware.sourcePath! });
+
+      // 如果不存在，添加该组的所有课件到使用列表
+      group.coursewares.forEach(cw => {
+        const isAlreadyAdded = cw.sourcePath && coursewares.some(usedCw => usedCw.sourcePath === cw.sourcePath);
+        if (!isAlreadyAdded) {
+          addBundledCourseware(cw);
+        }
+      });
+      
+      setPendingNavigation({ sourcePath: firstCourseware.sourcePath! });
+    }
   };
 
   if (bundledCoursewareGroups.length === 0) {
@@ -121,31 +129,41 @@ const NavigationPage: React.FC = () => {
                 )}
 
                 {/* 课程URL */}
-                <div style={{ marginTop: '12px' }}>
-                  <Text type="secondary" style={{ fontSize: '12px' }}>课程链接（第1页）：</Text>
-                  <Input.Group compact style={{ marginTop: '4px' }}>
-                    <Input
-                      readOnly
-                      value={`${window.location.origin}/${group.courseId}/0`}
-                      style={{ fontSize: '11px' }}
-                      prefix={<LinkOutlined />}
-                    />
-                    <Button
-                      icon={<CopyOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const url = `${window.location.origin}/${group.courseId}/0`;
-                        navigator.clipboard.writeText(url).then(() => {
-                          message.success('课程链接已复制到剪贴板');
-                        }).catch(() => {
-                          message.error('复制失败');
-                        });
-                      }}
-                    >
-                      复制
-                    </Button>
-                  </Input.Group>
-                </div>
+                {group.coursewares.length > 0 && group.coursewares[0].platform && (
+                  <div style={{ marginTop: '12px' }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>课程链接（第1页）：</Text>
+                    <Input.Group compact style={{ marginTop: '4px' }}>
+                      <Input
+                        readOnly
+                        value={(() => {
+                          const firstCourseware = group.coursewares[0];
+                          const courseFileName = firstCourseware.filePath?.split('/').pop()?.replace('.html', '') || '';
+                          const folder = group.folder || group.id;
+                          return `${window.location.origin}/${firstCourseware.platform}/${firstCourseware.owner}/${firstCourseware.repo}/${folder}/${courseFileName}/0`;
+                        })()}
+                        style={{ fontSize: '11px' }}
+                        prefix={<LinkOutlined />}
+                      />
+                      <Button
+                        icon={<CopyOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const firstCourseware = group.coursewares[0];
+                          const courseFileName = firstCourseware.filePath?.split('/').pop()?.replace('.html', '') || '';
+                          const folder = group.folder || group.id;
+                          const url = `${window.location.origin}/${firstCourseware.platform}/${firstCourseware.owner}/${firstCourseware.repo}/${folder}/${courseFileName}/0`;
+                          navigator.clipboard.writeText(url).then(() => {
+                            message.success('课程链接已复制到剪贴板');
+                          }).catch(() => {
+                            message.error('复制失败');
+                          });
+                        }}
+                      >
+                        复制
+                      </Button>
+                    </Input.Group>
+                  </div>
+                )}
 
                 <Button
                   type="primary"

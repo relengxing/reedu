@@ -1,10 +1,13 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Tabs, Button, Modal, List } from 'antd';
-import type { TabsProps } from 'antd';
+import { Tabs, Button, Modal, List, Dropdown, Avatar, Space, Typography } from 'antd';
+import type { TabsProps, MenuProps } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, ToolOutlined, FileTextOutlined, UnorderedListOutlined, SettingOutlined } from '@ant-design/icons';
+import { HomeOutlined, ToolOutlined, FileTextOutlined, UnorderedListOutlined, SettingOutlined, GlobalOutlined, UserOutlined, LoginOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
+import { useAuth } from '../context/AuthContext';
 import ToolsModal from './ToolsModal';
+
+const { Text } = Typography;
 
 interface TopNavProps {
   onToolsClick?: () => void;
@@ -48,9 +51,49 @@ const TopNav: React.FC<TopNavProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const { coursewares, setCurrentCoursewareIndex } = useCourseware();
+  const { user, isAuthenticated, signOut } = useAuth();
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const [tabItemColors, setTabItemColors] = useState<Map<string, string>>(new Map());
   const [chaptersModalVisible, setChaptersModalVisible] = useState(false);
+
+  // 用户菜单
+  const userMenuItems: MenuProps['items'] = isAuthenticated
+    ? [
+        {
+          key: 'email',
+          label: <Text strong>{user?.email}</Text>,
+          disabled: true,
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'config',
+          label: '我的课件',
+          icon: <SettingOutlined />,
+          onClick: () => navigate('/config'),
+        },
+        {
+          type: 'divider',
+        },
+        {
+          key: 'logout',
+          label: '退出登录',
+          icon: <LogoutOutlined />,
+          onClick: async () => {
+            await signOut();
+            navigate('/');
+          },
+        },
+      ]
+    : [
+        {
+          key: 'login',
+          label: '登录 / 注册',
+          icon: <LoginOutlined />,
+          onClick: () => navigate('/auth'),
+        },
+      ];
 
   // 构建 Tabs 项：首页、工具、每个课件的页面
   const { tabItems, tabItemColors: computedColors } = useMemo(() => {
@@ -60,6 +103,14 @@ const TopNav: React.FC<TopNavProps> = ({
         label: (
           <span>
             <HomeOutlined /> 首页
+          </span>
+        ),
+      },
+      {
+        key: '/square',
+        label: (
+          <span>
+            <GlobalOutlined /> 课件广场
           </span>
         ),
       },
@@ -202,6 +253,31 @@ const TopNav: React.FC<TopNavProps> = ({
             `;
           }).join('')}
         `}</style>
+      </div>
+      {/* 用户菜单 */}
+      <div style={{
+        position: 'absolute',
+        right: '48px',
+        zIndex: 10,
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 8px',
+      }}>
+        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" trigger={['click']}>
+          <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Avatar
+              size="small"
+              icon={<UserOutlined />}
+              style={{ backgroundColor: isAuthenticated ? '#1890ff' : '#999' }}
+            />
+            {isAuthenticated && (
+              <Text style={{ fontSize: '13px', maxWidth: '100px' }} ellipsis>
+                {user?.email?.split('@')[0]}
+              </Text>
+            )}
+          </div>
+        </Dropdown>
       </div>
       {/* 所有章节按钮 */}
       <Button

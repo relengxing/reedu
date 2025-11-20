@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { Card, Input, Button, Space, Typography, message } from 'antd';
+import { Card, Input, Button, Space, Typography, message, Select } from 'antd';
 import { CopyOutlined, CheckOutlined } from '@ant-design/icons';
+import { PROMPT_TEMPLATES, generatePrompt, type PromptType } from '../utils/promptTemplates';
 
 const { TextArea } = Input;
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
+const { Option } = Select;
 
 const PromptGenerator: React.FC = () => {
   const [userRequirement, setUserRequirement] = useState('');
+  const [promptType, setPromptType] = useState<PromptType>('courseware');
   const [copied, setCopied] = useState(false);
 
-  const generatePrompt = () => {
+  const getCurrentPrompt = () => {
+    return generatePrompt(promptType, userRequirement);
+  };
+
+  const generateOldPrompt = () => {
     const baseRequirements = `请生成一个符合以下要求的HTML课件：
 
 ## 基本要求
@@ -352,7 +359,7 @@ ${userRequirement || '（用户未填写具体要求）'}
   };
 
   const handleCopy = () => {
-    const prompt = generatePrompt();
+    const prompt = getCurrentPrompt();
     navigator.clipboard.writeText(prompt).then(() => {
       message.success('提示词已复制到剪贴板！');
       setCopied(true);
@@ -360,7 +367,10 @@ ${userRequirement || '（用户未填写具体要求）'}
     });
   };
 
-  const prompt = generatePrompt();
+  const prompt = getCurrentPrompt();
+  
+  // 获取当前选择的模板信息
+  const currentTemplate = PROMPT_TEMPLATES.find(t => t.type === promptType);
 
   return (
     <Card>
@@ -368,15 +378,48 @@ ${userRequirement || '（用户未填写具体要求）'}
         <div>
           <Title level={4}>课件生成提示词工具</Title>
           <Paragraph>
-            输入您对课件的具体要求，系统会自动添加技术规范和格式要求，生成完整的提示词供大模型使用。
+            选择课件类型，输入具体要求，系统会自动生成包含技术规范的完整提示词供大模型使用。
           </Paragraph>
         </div>
 
         <div>
-          <Title level={5}>您的课件要求：</Title>
+          <Title level={5}>选择课件类型：</Title>
+          <Select
+            value={promptType}
+            onChange={(value) => setPromptType(value)}
+            style={{ width: '100%' }}
+            size="large"
+          >
+            {PROMPT_TEMPLATES.map(template => (
+              <Option key={template.type} value={template.type}>
+                <Space>
+                  <Text strong>{template.name}</Text>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    {template.description}
+                  </Text>
+                </Space>
+              </Option>
+            ))}
+          </Select>
+          {currentTemplate && (
+            <div style={{ marginTop: '8px' }}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>
+                {currentTemplate.description}
+              </Text>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <Title level={5}>您的具体要求：</Title>
           <TextArea
             rows={6}
-            placeholder="例如：生成一个关于二元一次方程组的数学课件，包含实际问题应用..."
+            placeholder={
+              promptType === 'catalog' ? '例如：生成初中数学七年级上册完整目录...' :
+              promptType === 'courseware' ? '例如：生成一个关于二元一次方程组的数学课件，包含实际问题应用...' :
+              promptType === 'practice' ? '例如：生成10道关于一元二次方程的随堂练习题，难度适中...' :
+              '例如：生成5道关于函数的课后作业题，包含综合应用题...'
+            }
             value={userRequirement}
             onChange={(e) => setUserRequirement(e.target.value)}
           />
@@ -404,12 +447,17 @@ ${userRequirement || '（用户未填写具体要求）'}
         <div>
           <Title level={5}>使用说明：</Title>
           <ol>
-            <li>在上方输入框中填写您对课件的具体要求</li>
-            <li>系统会自动生成包含技术规范的完整提示词</li>
-            <li>点击"复制提示词"按钮，将提示词复制到剪贴板</li>
-            <li>将提示词提供给大模型（如ChatGPT、Claude等）生成课件</li>
-            <li>生成完成后，使用"导入课件"功能导入生成的HTML文件</li>
+            <li><strong>选择类型</strong>：根据需要选择课件类型（目录页、课件内容、随堂练习、课后作业）</li>
+            <li><strong>填写要求</strong>：在输入框中填写您对课件的具体要求</li>
+            <li><strong>复制提示词</strong>：点击"复制提示词"按钮，将生成的提示词复制到剪贴板</li>
+            <li><strong>生成课件</strong>：将提示词提供给大模型（如ChatGPT、Claude、Deepseek等）生成课件</li>
+            <li><strong>导入课件</strong>：生成完成后，在"本地上传课件"标签页导入生成的HTML文件</li>
           </ol>
+          <div style={{ marginTop: '12px', padding: '12px', background: '#f0f5ff', borderRadius: '6px' }}>
+            <Text type="secondary" style={{ fontSize: '13px' }}>
+              <strong>💡 提示：</strong>不同类型的课件有不同的要求和格式。选择正确的类型可以生成更符合需求的课件。
+            </Text>
+          </div>
         </div>
       </Space>
     </Card>

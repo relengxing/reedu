@@ -1,78 +1,139 @@
-import React, { useState } from 'react';
-import { Card, Form, Input, Button, message, Typography, Space, List, Tabs, Upload, Tag, Popconfirm } from 'antd';
-import { PlusOutlined, DeleteOutlined, UploadOutlined, DragOutlined } from '@ant-design/icons';
+/**
+ * 配置页面 - 重新设计
+ * 包含:用户仓库管理、本地上传课件、课件发布、提示词生成器
+ */
+
+import React, { useState, useEffect } from 'react';
+import { Card, Form, Input, Button, message, Typography, Space, List, Tabs, Upload, Tag, Popconfirm, Switch, Modal, Alert } from 'antd';
+import { PlusOutlined, DeleteOutlined, UploadOutlined, DragOutlined, GithubOutlined, GlobalOutlined, EditOutlined, EyeOutlined, LikeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
+import { useAuth } from '../context/AuthContext';
 import { parseHTMLCourseware } from '../utils/coursewareParser';
-import type { CoursewareRepoConfig } from '../services/coursewareLoader';
 import type { UploadFile } from 'antd';
 import PromptGenerator from '../components/PromptGenerator';
-import { DEFAULT_REPO_URL } from '../services/coursewareLoader';
+import * as userRepoService from '../services/userRepoService';
+import * as coursewareSquareService from '../services/coursewareSquareService';
+import type { UserRepo } from '../services/userRepoService';
+import type { PublicCourseware } from '../services/coursewareSquareService';
 
 const { Title, Paragraph, Text } = Typography;
+const { TextArea } = Input;
 
 const ConfigPage: React.FC = () => {
   const navigate = useNavigate();
-  const { 
-    loadFromRepos, 
-    isLoading, 
-    repoConfigs, 
-    addRepo, 
-    removeRepo,
+  const { isAuthenticated, user } = useAuth();
+  const {
     coursewares,
     addCourseware,
     removeCourseware,
     reorderCoursewares,
     setCurrentCoursewareIndex,
+    bundledCoursewareGroups,
+    loadUserRepos: loadUserReposFromContext,
   } = useCourseware();
+
   const [form] = Form.useForm();
+  const [publishForm] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  
+  // 用户仓库相关
+  const [userRepos, setUserRepos] = useState<UserRepo[]>([]);
+  const [loadingRepos, setLoadingRepos] = useState(false);
+  
+  // 公开课件相关
+  const [publicCoursewares, setPublicCoursewares] = useState<PublicCourseware[]>([]);
+  const [loadingPublicCoursewares, setLoadingPublicCoursewares] = useState(false);
+  const [publishModalVisible, setPublishModalVisible] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<any>(null);
 
-  const handleAddRepo = async (values: { baseUrl: string }) => {
+  // 加载用户仓库
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      loadUserRepos();
+      loadPublicCoursewares();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadUserRepos = async () => {
+    if (!user) return;
+    setLoadingRepos(true);
     try {
-      addRepo({ baseUrl: values.baseUrl });
-      form.resetFields();
-      message.success('仓库已添加');
-      // 自动重新加载
-      await loadFromRepos();
+      const repos = await userRepoService.getUserRepos(user.id);
+      setUserRepos(repos);
     } catch (error) {
-      message.error(`添加失败: ${(error as Error).message}`);
+      console.error('加载用户仓库失败:', error);
+    } finally {
+      setLoadingRepos(false);
     }
   };
 
-  const handleRemoveRepo = async (baseUrl: string) => {
-    if (baseUrl === DEFAULT_REPO_URL) {
-      message.warning('默认仓库不能删除');
+  const loadPublicCoursewares = async () => {
+    if (!user) return;
+    setLoadingPublicCoursewares(true);
+    try {
+      const coursewares = await coursewareSquareService.getUserPublicCoursewares(user.id);
+      setPublicCoursewares(coursewares);
+    } catch (error) {
+      console.error('加载公开课件失败:', error);
+    } finally {
+      setLoadingPublicCoursewares(false);
+    }
+  };
+
+  // 添加用户仓库
+  const handleAddUserRepo = async (values: { repoUrl: string }) => {
+    if (!user) {
+      message.error('请先登录');
       return;
     }
+
     try {
-      removeRepo(baseUrl);
-      message.success('仓库已删除');
-      // 自动重新加载
-      await loadFromRepos();
+      const { success, error } = await userRepoService.addUserRepo(user.id, values.repoUrl);
+      if (success) {
+        message.success('仓库添加成功');
+        form.resetFields();
+        // 刷新仓库列表显示
+        await loadUserRepos();
+        // 触发CoursewareContext重新加载课件
+        await loadUserReposFromContext();
+        message.success('课件已加载');
+      } else {
+        message.error(error || '添加失败');
+      }
     } catch (error) {
-      message.error(`删除失败: ${(error as Error).message}`);
+      message.error('添加失败');
     }
   };
 
-  const handleLoad = async () => {
+  // 删除用户仓库
+  const handleRemoveUserRepo = async (repoId: string) => {
     try {
-      await loadFromRepos();
-      message.success('课件加载成功！');
+      const { success, error } = await userRepoService.removeUserRepo(repoId);
+      if (success) {
+        message.success('仓库已删除');
+        // 刷新仓库列表显示
+        await loadUserRepos();
+        // 触发CoursewareContext重新加载课件
+        await loadUserReposFromContext();
+      } else {
+        message.error(error || '删除失败');
+      }
     } catch (error) {
-      message.error(`加载失败: ${(error as Error).message}`);
+      message.error('删除失败');
     }
   };
 
+  // 上传本地课件
   const handleUpload = async (file: File) => {
     try {
       const text = await file.text();
       const coursewareData = parseHTMLCourseware(text, file.name);
       addCourseware(coursewareData);
       message.success(`课件"${coursewareData.title}"导入成功！`);
-      return false; // 阻止默认上传行为
+      return false;
     } catch (error) {
       message.error('课件导入失败：' + (error as Error).message);
       return false;
@@ -89,144 +150,174 @@ const ConfigPage: React.FC = () => {
     multiple: true,
   };
 
-  const isDefaultRepo = (baseUrl: string) => baseUrl === DEFAULT_REPO_URL;
+  // 打开发布课件对话框
+  const handleOpenPublishModal = (group: any) => {
+    setSelectedGroup(group);
+    publishForm.setFieldsValue({
+      title: group.name,
+      description: '',
+    });
+    setPublishModalVisible(true);
+  };
+
+  // 发布课件
+  const handlePublishCourseware = async () => {
+    if (!user || !selectedGroup) return;
+
+    try {
+      const values = await publishForm.validateFields();
+      const { success, error } = await coursewareSquareService.publishCourseware(
+        user.id,
+        selectedGroup.coursewares[0]?.sourcePath || '', // 使用第一个课件的sourcePath作为repoUrl
+        selectedGroup.id,
+        selectedGroup.name,
+        values.title,
+        values.description
+      );
+
+      if (success) {
+        message.success('课件发布成功');
+        setPublishModalVisible(false);
+        loadPublicCoursewares();
+      } else {
+        message.error(error || '发布失败');
+      }
+    } catch (error) {
+      message.error('发布失败');
+    }
+  };
+
+  // 切换课件公开状态
+  const handleTogglePublic = async (courseware: PublicCourseware) => {
+    try {
+      const { success, error } = await coursewareSquareService.updateCourseware(
+        courseware.id,
+        { isPublic: !courseware.isPublic }
+      );
+
+      if (success) {
+        message.success(courseware.isPublic ? '已取消公开' : '已公开');
+        loadPublicCoursewares();
+      } else {
+        message.error(error || '操作失败');
+      }
+    } catch (error) {
+      message.error('操作失败');
+    }
+  };
+
+  // 删除公开课件
+  const handleDeletePublicCourseware = async (coursewareId: string) => {
+    try {
+      const { success, error } = await coursewareSquareService.deleteCourseware(coursewareId);
+      if (success) {
+        message.success('已删除');
+        loadPublicCoursewares();
+      } else {
+        message.error(error || '删除失败');
+      }
+    } catch (error) {
+      message.error('删除失败');
+    }
+  };
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Title level={2}>配置</Title>
-      
+      <Title level={2}>配置中心</Title>
+
       <Tabs
-        defaultActiveKey="repos"
+        defaultActiveKey="upload"
         items={[
+          // 我的仓库 - 需要登录
           {
-            key: 'repos',
-            label: '课件仓库',
-            children: (
+            key: 'my-repos',
+            label: '我的仓库',
+            children: isAuthenticated ? (
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Alert
+                  message="绑定您的GitHub或Gitee仓库"
+                  description="添加仓库后,系统会自动加载仓库中的课件。您可以绑定多个仓库。"
+                  type="info"
+                  showIcon
+                />
+
                 <Card>
-                  <Title level={4}>仓库列表</Title>
-                  <Paragraph>
-                    系统会从所有配置的仓库加载课件。默认仓库已自动添加。
-                  </Paragraph>
-                  
+                  <Form form={form} layout="inline" onFinish={handleAddUserRepo}>
+                    <Form.Item
+                      name="repoUrl"
+                      rules={[{ required: true, message: '请输入仓库URL' }]}
+                      style={{ flex: 1, minWidth: '300px' }}
+                    >
+                      <Input
+                        placeholder="https://github.com/user/repo 或 gitee/user/project"
+                        prefix={<GithubOutlined />}
+                      />
+                    </Form.Item>
+                    <Form.Item>
+                      <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
+                        添加仓库
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                </Card>
+
+                <Card title="我的仓库列表" loading={loadingRepos}>
                   <List
-                    dataSource={repoConfigs}
+                    dataSource={userRepos}
                     renderItem={(repo) => (
                       <List.Item
                         actions={[
-                          !isDefaultRepo(repo.baseUrl) && (
-                            <Popconfirm
-                              title="确定要删除这个仓库吗？"
-                              onConfirm={() => handleRemoveRepo(repo.baseUrl)}
-                            >
-                              <Button size="small" danger icon={<DeleteOutlined />}>
-                                删除
-                              </Button>
-                            </Popconfirm>
-                          ),
-                        ].filter(Boolean)}
+                          <Popconfirm
+                            title="确定要删除这个仓库吗?"
+                            onConfirm={() => handleRemoveUserRepo(repo.id)}
+                          >
+                            <Button size="small" danger icon={<DeleteOutlined />}>
+                              删除
+                            </Button>
+                          </Popconfirm>,
+                        ]}
                       >
                         <List.Item.Meta
-                          title={
+                          avatar={repo.platform === 'github' ? <GithubOutlined style={{ fontSize: '24px' }} /> : <GlobalOutlined style={{ fontSize: '24px' }} />}
+                          title={repo.repoUrl}
+                          description={
                             <Space>
-                              <Text>{repo.baseUrl}</Text>
-                              {isDefaultRepo(repo.baseUrl) && <Tag color="blue">默认</Tag>}
+                              <Tag color={repo.platform === 'github' ? 'blue' : 'orange'}>
+                                {repo.platform}
+                              </Tag>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                {new Date(repo.createdAt).toLocaleDateString()}
+                              </Text>
                             </Space>
                           }
                         />
                       </List.Item>
                     )}
+                    locale={{ emptyText: '暂无仓库,请添加' }}
                   />
-
-                  <Form
-                    form={form}
-                    layout="inline"
-                    onFinish={handleAddRepo}
-                    style={{ marginTop: '16px' }}
-                  >
-                    <Form.Item
-                      name="baseUrl"
-                      rules={[
-                        { required: true, message: '请输入仓库URL' },
-                        { type: 'url', message: '请输入有效的URL' },
-                      ]}
-                      style={{ flex: 1, minWidth: '400px' }}
-                    >
-                      <Input
-                        placeholder="https://github.com/user/repo 或 https://raw.githubusercontent.com/user/repo/main/"
-                        disabled={isLoading}
-                      />
-                    </Form.Item>
-                    <Form.Item>
-                      <Button type="primary" htmlType="submit" icon={<PlusOutlined />} disabled={isLoading}>
-                        添加仓库
-                      </Button>
-                    </Form.Item>
-                  </Form>
-
-                  <Button
-                    type="primary"
-                    onClick={handleLoad}
-                    loading={isLoading}
-                    block
-                    style={{ marginTop: '16px' }}
-                  >
-                    {isLoading ? '加载中...' : '重新加载所有课件'}
-                  </Button>
-                </Card>
-
-                <Card>
-                  <Title level={4}>使用说明</Title>
-                  <Space direction="vertical" style={{ width: '100%' }}>
-                    <div>
-                      <Text strong>1. 默认仓库</Text>
-                      <Paragraph>
-                        系统默认从 <Text code>{DEFAULT_REPO_URL}</Text> 加载课件。
-                      </Paragraph>
-                    </div>
-
-                    <div>
-                      <Text strong>2. 添加仓库</Text>
-                      <Paragraph>
-                        在上方输入框中输入仓库URL。支持两种格式：
-                      </Paragraph>
-                      <ul>
-                        <li>
-                          <Text strong>GitHub仓库地址：</Text>
-                          <Text code>https://github.com/user/repo</Text>
-                          <Text type="secondary">（系统会自动转换为raw URL，默认使用main分支）</Text>
-                        </li>
-                        <li>
-                          <Text strong>Raw内容URL：</Text>
-                          <Text code>https://raw.githubusercontent.com/user/repo/main/</Text>
-                          <Text type="secondary">（直接使用，必须包含分支名）</Text>
-                        </li>
-                      </ul>
-                      <Paragraph>
-                        <Text strong>示例：</Text>
-                        <br />
-                        <Text code>https://github.com/relengxing/reedu-coursewares</Text>
-                        <br />
-                        <Text type="secondary">会自动转换为：</Text>
-                        <br />
-                        <Text code>https://raw.githubusercontent.com/relengxing/reedu-coursewares/main/</Text>
-                      </Paragraph>
-                    </div>
-
-                    <div>
-                      <Text strong>3. 仓库要求</Text>
-                      <Paragraph>
-                        每个仓库必须包含 <Text code>manifest.json</Text> 文件来列出所有课件。
-                      </Paragraph>
-                    </div>
-                  </Space>
                 </Card>
               </Space>
+            ) : (
+              <Card>
+                <Alert
+                  message="需要登录"
+                  description="请先登录以管理您的课件仓库"
+                  type="warning"
+                  showIcon
+                  action={
+                    <Button type="primary" onClick={() => navigate('/auth')}>
+                      去登录
+                    </Button>
+                  }
+                />
+              </Card>
             ),
           },
+
+          // 本地上传课件
           {
             key: 'upload',
-            label: '手动加载课件',
+            label: '本地上传课件',
             children: (
               <Card>
                 <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -239,7 +330,7 @@ const ConfigPage: React.FC = () => {
                   <Upload {...uploadProps}>
                     <Button icon={<UploadOutlined />}>选择HTML文件（可多选）</Button>
                   </Upload>
-                  
+
                   {coursewares.length > 0 && (
                     <div>
                       <Title level={5}>已导入的课件（{coursewares.length}个）：</Title>
@@ -253,30 +344,19 @@ const ConfigPage: React.FC = () => {
                               cursor: 'move',
                               opacity: draggedIndex === index ? 0.5 : 1,
                               border: dragOverIndex === index ? '2px dashed #1890ff' : '1px solid #d9d9d9',
-                              transition: 'all 0.2s',
                             }}
                             draggable
-                            onDragStart={(e) => {
-                              setDraggedIndex(index);
-                              e.dataTransfer.effectAllowed = 'move';
-                            }}
+                            onDragStart={() => setDraggedIndex(index)}
                             onDragOver={(e) => {
                               e.preventDefault();
-                              e.dataTransfer.dropEffect = 'move';
                               setDragOverIndex(index);
                             }}
-                            onDragLeave={() => {
-                              setDragOverIndex(null);
-                            }}
+                            onDragLeave={() => setDragOverIndex(null)}
                             onDrop={(e) => {
                               e.preventDefault();
                               if (draggedIndex !== null && draggedIndex !== index) {
                                 reorderCoursewares(draggedIndex, index);
                               }
-                              setDraggedIndex(null);
-                              setDragOverIndex(null);
-                            }}
-                            onDragEnd={() => {
                               setDraggedIndex(null);
                               setDragOverIndex(null);
                             }}
@@ -295,7 +375,7 @@ const ConfigPage: React.FC = () => {
                                 查看目录
                               </Button>
                               <Popconfirm
-                                title="确定要删除这个课件吗？"
+                                title="确定要删除这个课件吗?"
                                 onConfirm={() => {
                                   removeCourseware(index);
                                   message.success('已删除');
@@ -309,24 +389,125 @@ const ConfigPage: React.FC = () => {
                           </Card>
                         ))}
                       </Space>
-                      <Paragraph type="secondary" style={{ marginTop: '8px', fontSize: '12px' }}>
-                        提示：拖拽课件卡片可以调整顺序
-                      </Paragraph>
                     </div>
                   )}
-                  <div>
-                    <Title level={5}>课件要求：</Title>
-                    <ul>
-                      <li>页面宽高比为16:9</li>
-                      <li>使用KaTeX或MathJax处理数学公式</li>
-                      <li>建议使用section标签或特定class标记章节</li>
-                      <li>支持目录结构，便于导航</li>
-                    </ul>
-                  </div>
                 </Space>
               </Card>
             ),
           },
+
+          // 我的公开课件
+          {
+            key: 'public-coursewares',
+            label: '我的公开课件',
+            children: isAuthenticated ? (
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Alert
+                  message="管理您的公开课件"
+                  description="您可以将课件发布到课件广场,让其他用户发现和学习。"
+                  type="info"
+                  showIcon
+                />
+
+                <Card title="发布课件到广场">
+                  <Paragraph>
+                    从已加载的课件组中选择要发布的课件:
+                  </Paragraph>
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {bundledCoursewareGroups.map((group) => (
+                      <Card key={group.id} size="small">
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <div>
+                            <Text strong>{group.name}</Text>
+                            <br />
+                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                              {group.coursewares.length} 个课件
+                            </Text>
+                          </div>
+                          <Button
+                            type="primary"
+                            icon={<GlobalOutlined />}
+                            onClick={() => handleOpenPublishModal(group)}
+                          >
+                            发布到广场
+                          </Button>
+                        </Space>
+                      </Card>
+                    ))}
+                  </Space>
+                </Card>
+
+                <Card title="已发布的课件" loading={loadingPublicCoursewares}>
+                  <List
+                    dataSource={publicCoursewares}
+                    renderItem={(courseware) => (
+                      <List.Item
+                        actions={[
+                          <Switch
+                            checked={courseware.isPublic}
+                            onChange={() => handleTogglePublic(courseware)}
+                            checkedChildren="公开"
+                            unCheckedChildren="私密"
+                          />,
+                          <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => {
+                              // TODO: 实现编辑功能
+                              message.info('编辑功能即将上线');
+                            }}
+                          >
+                            编辑
+                          </Button>,
+                          <Popconfirm
+                            title="确定要删除吗?"
+                            onConfirm={() => handleDeletePublicCourseware(courseware.id)}
+                          >
+                            <Button size="small" danger icon={<DeleteOutlined />}>
+                              删除
+                            </Button>
+                          </Popconfirm>,
+                        ]}
+                      >
+                        <List.Item.Meta
+                          title={courseware.title}
+                          description={
+                            <Space direction="vertical">
+                              <Text type="secondary">{courseware.description || '暂无描述'}</Text>
+                              <Space>
+                                <Tag icon={<EyeOutlined />}>{courseware.viewsCount} 浏览</Tag>
+                                <Tag icon={<LikeOutlined />}>{courseware.likesCount} 点赞</Tag>
+                                <Tag color={courseware.isPublic ? 'green' : 'default'}>
+                                  {courseware.isPublic ? '已公开' : '未公开'}
+                                </Tag>
+                              </Space>
+                            </Space>
+                          }
+                        />
+                      </List.Item>
+                    )}
+                    locale={{ emptyText: '暂无发布的课件' }}
+                  />
+                </Card>
+              </Space>
+            ) : (
+              <Card>
+                <Alert
+                  message="需要登录"
+                  description="请先登录以发布和管理公开课件"
+                  type="warning"
+                  showIcon
+                  action={
+                    <Button type="primary" onClick={() => navigate('/auth')}>
+                      去登录
+                    </Button>
+                  }
+                />
+              </Card>
+            ),
+          },
+
+          // 提示词生成器
           {
             key: 'prompt',
             label: '生成提示词',
@@ -334,8 +515,38 @@ const ConfigPage: React.FC = () => {
           },
         ]}
       />
+
+      {/* 发布课件对话框 */}
+      <Modal
+        title="发布课件到广场"
+        open={publishModalVisible}
+        onOk={handlePublishCourseware}
+        onCancel={() => setPublishModalVisible(false)}
+        width={600}
+      >
+        <Form form={publishForm} layout="vertical">
+          <Form.Item
+            name="title"
+            label="课件标题"
+            rules={[{ required: true, message: '请输入课件标题' }]}
+          >
+            <Input placeholder="请输入课件标题" />
+          </Form.Item>
+          <Form.Item
+            name="description"
+            label="课件描述"
+            rules={[{ required: true, message: '请输入课件描述' }]}
+          >
+            <TextArea
+              rows={4}
+              placeholder="请简要描述课件内容、适用年级、知识点等信息"
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
 
 export default ConfigPage;
+

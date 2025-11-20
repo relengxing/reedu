@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { CoursewareData, CoursewareGroup } from '../types';
-import { bundledCoursewares, bundledCoursewareGroups } from '../coursewares';
 import { loadCoursewaresFromRepos, getCoursewareRepos, saveCoursewareRepos, addCoursewareRepo, removeCoursewareRepo, type CoursewareRepoConfig } from '../services/coursewareLoader';
+import { useAuth } from './AuthContext';
+import * as userRepoService from '../services/userRepoService';
 
 // localStorage 键名
 const STORAGE_KEY = 'reedu_coursewares';
@@ -33,20 +34,17 @@ const restoreCoursewares = (externalCoursewares: CoursewareData[] = []): Coursew
     const storedList: StoredCourseware[] = JSON.parse(stored);
     const restored: CoursewareData[] = [];
     
-    // 合并所有可用的课件资源（编译期 + 外部加载）
-    const allAvailableCoursewares = [...bundledCoursewares, ...externalCoursewares];
-    
     for (const item of storedList) {
       if (item.isBundled && item.sourcePath) {
-        // 从所有可用资源中恢复（包括编译期和外部加载的）
-        const found = allAvailableCoursewares.find(cw => cw.sourcePath === item.sourcePath);
+        // 从外部加载的资源中恢复
+        const found = externalCoursewares.find(cw => cw.sourcePath === item.sourcePath);
         if (found) {
           restored.push({ ...found });
         } else {
           console.warn(`[CoursewareContext] 无法找到课件: ${item.sourcePath}，可能外部仓库尚未加载`);
         }
       } else if (item.fullHTML) {
-        // 用户上传的课件，恢复完整数据
+        // 用户本地上传的课件，恢复完整数据
         restored.push({
           title: item.title || '未命名课件',
           pages: item.pages || [],
@@ -111,7 +109,7 @@ const saveCoursewares = (coursewares: CoursewareData[]) => {
 };
 
 interface CoursewareContextType {
-  // 使用的课件列表（从预编译资源中选择的 + 用户上传的）
+  // 使用的课件列表（从用户仓库加载的 + 用户本地上传的）
   coursewares: CoursewareData[];
   setCoursewares: (coursewares: CoursewareData[]) => void;
   addCourseware: (courseware: CoursewareData) => void;
@@ -122,17 +120,18 @@ interface CoursewareContextType {
   // 向后兼容
   courseware: CoursewareData | null;
   setCourseware: (courseware: CoursewareData | null) => void;
-  // 课件资源管理（合并编译期和外部加载的）
+  // 课件资源管理（从用户仓库加载的课件）
   bundledCoursewares: CoursewareData[]; // 所有可用的课件资源
   bundledCoursewareGroups: CoursewareGroup[]; // 所有可用的课件组
   addBundledCourseware: (courseware: CoursewareData) => void; // 从资源中选择课件使用
   removeBundledCourseware: (sourcePath: string) => void; // 从使用的课件中移除（但资源仍然存在）
-  // 外部仓库管理
-  loadFromRepos: (repos?: CoursewareRepoConfig[]) => Promise<void>; // 从外部仓库加载课件
+  // 用户仓库管理
+  loadFromRepos: (repos?: CoursewareRepoConfig[]) => Promise<void>; // 从仓库加载课件
+  loadUserRepos: () => Promise<void>; // 加载用户绑定的仓库
   isLoading: boolean; // 是否正在加载
-  repoConfigs: CoursewareRepoConfig[]; // 当前仓库配置列表
-  addRepo: (repo: CoursewareRepoConfig) => void; // 添加仓库
-  removeRepo: (baseUrl: string) => void; // 删除仓库
+  repoConfigs: CoursewareRepoConfig[]; // 当前仓库配置列表（已废弃，使用Supabase管理）
+  addRepo: (repo: CoursewareRepoConfig) => void; // 添加仓库（已废弃）
+  removeRepo: (baseUrl: string) => void; // 删除仓库（已废弃）
 }
 
 export const CoursewareContext = createContext<CoursewareContextType>({
@@ -157,6 +156,8 @@ export const CoursewareContext = createContext<CoursewareContextType>({
 });
 
 export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
+  
   // 外部加载的课件和组
   const [externalCoursewares, setExternalCoursewares] = useState<CoursewareData[]>([]);
   const [externalGroups, setExternalGroups] = useState<CoursewareGroup[]>([]);
@@ -165,13 +166,12 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return getCoursewareRepos();
   });
 
-  // 合并编译期和外部加载的课件
-  const allBundledCoursewares = [...bundledCoursewares, ...externalCoursewares];
-  const allBundledGroups = [...bundledCoursewareGroups, ...externalGroups];
+  // 只使用外部加载的课件（删除编译期课件）
+  const allBundledCoursewares = externalCoursewares;
+  const allBundledGroups = externalGroups;
 
-  // 使用的课件列表（从预编译资源中选择的 + 用户上传的）
-  // 从localStorage恢复，如果不存在则初始为空
-  // 初始恢复时只使用编译期课件，外部课件加载后会重新恢复
+  // 使用的课件列表（从用户仓库加载的 + 用户本地上传的）
+  // 从localStorage恢复
   const [coursewares, setCoursewares] = useState<CoursewareData[]>(() => {
     const restored = restoreCoursewares([]);
     return restored;
@@ -241,17 +241,44 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setRepoConfigs(updatedRepos);
   };
 
-  // 应用启动时，自动加载默认仓库
+  // 用户登录后，自动加载用户绑定的仓库
   useEffect(() => {
-    const repos = getCoursewareRepos();
-    if (repos.length > 0) {
-      console.log('[CoursewareContext] 检测到仓库配置，自动加载课件');
-      loadFromRepos(repos).catch(error => {
-        console.error('[CoursewareContext] 自动加载失败:', error);
-      });
+    if (isAuthenticated && user) {
+      console.log('[CoursewareContext] 用户已登录，加载用户仓库');
+      loadUserRepos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, user]);
+
+  // 加载用户仓库的课件
+  const loadUserRepos = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      // 从Supabase获取用户的仓库列表
+      const userRepos = await userRepoService.getUserRepos(user.id);
+      console.log('[CoursewareContext] 获取到用户仓库:', userRepos.length);
+      
+      if (userRepos.length === 0) {
+        console.log('[CoursewareContext] 用户没有绑定仓库');
+        setIsLoading(false);
+        return;
+      }
+
+      // 转换为CoursewareRepoConfig格式
+      const repoConfigs: CoursewareRepoConfig[] = userRepos.map(repo => ({
+        baseUrl: repo.rawUrl,
+      }));
+
+      // 加载所有仓库的课件
+      await loadFromRepos(repoConfigs);
+    } catch (error) {
+      console.error('[CoursewareContext] 加载用户仓库失败:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 当coursewares变化时，保存到localStorage
   useEffect(() => {
@@ -378,6 +405,7 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addBundledCourseware,
         removeBundledCourseware,
         loadFromRepos,
+        loadUserRepos,
         isLoading,
         repoConfigs,
         addRepo,

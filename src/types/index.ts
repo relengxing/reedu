@@ -23,13 +23,25 @@ export interface CoursewareData {
   // 资源标识
   isBundled?: boolean; // 是否为预编译课件
   sourcePath?: string; // 源文件路径
+  // 仓库信息（用于生成语义化URL）
+  platform?: string; // 'github' 或 'gitee'
+  owner?: string; // 仓库所有者
+  repo?: string; // 仓库名称
+  branch?: string; // 分支名称
+  filePath?: string; // 文件在仓库中的相对路径
 }
 
 // 课件组
 export interface CoursewareGroup {
   id: string; // 组ID（文件夹名）
   name: string; // 组名称
-  courseId: string; // 课程ID（文件夹名的MD5哈希值，用于URL）
+  courseId: string; // 课程ID（现在是 platform/owner/repo/folder 格式，不再使用MD5）
   coursewares: CoursewareData[]; // 该组下的所有课件
+  // 仓库信息（用于生成语义化URL）
+  platform?: string; // 'github' 或 'gitee'
+  owner?: string; // 仓库所有者
+  repo?: string; // 仓库名称
+  branch?: string; // 分支名称
+  folder?: string; // 文件夹路径
 }
 
