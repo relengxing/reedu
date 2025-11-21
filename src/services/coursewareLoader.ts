@@ -200,7 +200,7 @@ async function loadCoursewaresFromSingleRepo(config: CoursewareRepoConfig): Prom
         const fileUrl = buildFileUrl(filePath, config);
         console.log(`[CoursewareLoader] 加载课件: ${filePath}`);
         
-        const htmlContent = await fetchFileContent(fileUrl);
+        let htmlContent = await fetchFileContent(fileUrl);
         const filename = filePath.split('/').pop()?.replace(/\.html$/, '') || '未命名';
         
         // 先处理音频文件路径，提取课件中的音频路径并转换为完整URL
@@ -216,7 +216,87 @@ async function loadCoursewaresFromSingleRepo(config: CoursewareRepoConfig): Prom
         // 设置音频路径映射到解析器（在解析之前）
         setAudioPathMap(audioPathMap);
         
-        // 解析课件（此时音频路径会被自动替换）
+        // 获取课件所在目录（用于处理相对路径）
+        const baseUrl = config.baseUrl.endsWith('/') ? config.baseUrl : `${config.baseUrl}/`;
+        const fileDir = filePath.split('/').slice(0, -1).join('/');
+        const fileDirUrl = fileDir ? `${baseUrl}${fileDir}/` : baseUrl;
+        
+        // 处理外部脚本路径（将相对路径转换为绝对路径）
+        htmlContent = htmlContent.replace(
+          /<script\s+([^>]*\s+)?src=["']([^"']+)["']/g,
+          (fullMatch, attrs, scriptPath) => {
+            // 如果已经是绝对路径（http:// 或 https://），不做处理
+            if (scriptPath.startsWith('http://') || scriptPath.startsWith('https://')) {
+              return fullMatch;
+            }
+            
+            // 转换相对路径为 GitHub raw URL
+            let absoluteScriptUrl: string;
+            if (scriptPath.startsWith('./')) {
+              // ./xxx.js → fileDirUrl + xxx.js
+              absoluteScriptUrl = `${fileDirUrl}${scriptPath.replace(/^\.\//, '')}`;
+            } else if (scriptPath.startsWith('/')) {
+              // /xxx.js → baseUrl + xxx.js
+              absoluteScriptUrl = `${baseUrl}${scriptPath.substring(1)}`;
+            } else {
+              // xxx.js → fileDirUrl + xxx.js
+              absoluteScriptUrl = `${fileDirUrl}${scriptPath}`;
+            }
+            
+            console.log(`[CoursewareLoader] 转换脚本路径: ${scriptPath} → ${absoluteScriptUrl}`);
+            return `<script ${attrs || ''}src="${absoluteScriptUrl}"`;
+          }
+        );
+        
+        // 处理外部样式表路径（CSS文件）
+        htmlContent = htmlContent.replace(
+          /<link\s+([^>]*\s+)?href=["']([^"']+\.css)["']/g,
+          (fullMatch, attrs, cssPath) => {
+            // 如果已经是绝对路径，不做处理
+            if (cssPath.startsWith('http://') || cssPath.startsWith('https://')) {
+              return fullMatch;
+            }
+            
+            // 转换相对路径为 GitHub raw URL
+            let absoluteCssUrl: string;
+            if (cssPath.startsWith('./')) {
+              absoluteCssUrl = `${fileDirUrl}${cssPath.replace(/^\.\//, '')}`;
+            } else if (cssPath.startsWith('/')) {
+              absoluteCssUrl = `${baseUrl}${cssPath.substring(1)}`;
+            } else {
+              absoluteCssUrl = `${fileDirUrl}${cssPath}`;
+            }
+            
+            console.log(`[CoursewareLoader] 转换CSS路径: ${cssPath} → ${absoluteCssUrl}`);
+            return `<link ${attrs || ''}href="${absoluteCssUrl}"`;
+          }
+        );
+        
+        // 处理图片路径
+        htmlContent = htmlContent.replace(
+          /<img\s+([^>]*\s+)?src=["']([^"']+)["']/g,
+          (fullMatch, attrs, imgPath) => {
+            // 如果已经是绝对路径或data URL，不做处理
+            if (imgPath.startsWith('http://') || imgPath.startsWith('https://') || imgPath.startsWith('data:')) {
+              return fullMatch;
+            }
+            
+            // 转换相对路径为 GitHub raw URL
+            let absoluteImgUrl: string;
+            if (imgPath.startsWith('./')) {
+              absoluteImgUrl = `${fileDirUrl}${imgPath.replace(/^\.\//, '')}`;
+            } else if (imgPath.startsWith('/')) {
+              absoluteImgUrl = `${baseUrl}${imgPath.substring(1)}`;
+            } else {
+              absoluteImgUrl = `${fileDirUrl}${imgPath}`;
+            }
+            
+            console.log(`[CoursewareLoader] 转换图片路径: ${imgPath} → ${absoluteImgUrl}`);
+            return `<img ${attrs || ''}src="${absoluteImgUrl}"`;
+          }
+        );
+        
+        // 解析课件（此时所有外部资源路径都已转换为绝对路径）
         const courseware = parseHTMLCourseware(htmlContent, filename);
         courseware.isBundled = true;
         // 使用 baseUrl + filePath 作为唯一标识，避免不同仓库的相同路径冲突

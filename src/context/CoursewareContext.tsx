@@ -309,14 +309,23 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 加载用户仓库的课件
   const loadUserRepos = async () => {
-    if (!user) return;
-    
     // 防止重复加载
+    if (hasLoadedUserRepos) {
+      console.log('[CoursewareContext] 已加载过用户仓库，跳过重复加载');
+      return;
+    }
+    
+    if (!user) {
+      console.log('[CoursewareContext] 用户未登录，跳过加载');
+      return;
+    }
+    
     if (isLoading) {
       console.log('[CoursewareContext] 正在加载中，跳过重复请求');
       return;
     }
     
+    setHasLoadedUserRepos(true);
     setIsLoading(true);
     try {
       // 从Supabase获取用户的仓库列表

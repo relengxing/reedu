@@ -12,11 +12,16 @@ const NavigationPage: React.FC = () => {
   const { bundledCoursewareGroups, coursewares, addBundledCourseware, loadUserRepos } = useCourseware();
   const [pendingNavigation, setPendingNavigation] = useState<{ sourcePath: string } | null>(null);
   const prevCoursewaresLengthRef = useRef(coursewares.length);
+  const hasLoadedRef = useRef(false);
   
-  // 页面加载时初始化课件
+  // 页面加载时初始化课件（仅执行一次）
   useEffect(() => {
-    loadUserRepos(); // 延迟加载课件
-  }, [loadUserRepos]);
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadUserRepos(); // 延迟加载课件
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 空依赖数组，只在组件挂载时执行一次
 
   // 监听coursewares变化，当新课件添加完成后自动跳转
   useEffect(() => {
