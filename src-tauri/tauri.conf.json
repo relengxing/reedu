@@ -34,13 +34,7 @@
     ],
     "windows": {
       "nsis": {
-        "displayLanguageSelector": false,
-        "languages": ["en-US"],
-        "installerIcon": "icons/icon.ico",
-        "installMode": "both",
-        "allowDowngrades": true,
-        "createDesktopShortcut": true,
-        "createStartMenuShortcut": true
+        "installMode": "both"
       }
     },
     "resources": [],
