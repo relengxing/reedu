@@ -32,6 +32,11 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      }
+    },
     "resources": [],
     "externalBin": [],
     "copyright": "",
