@@ -32,6 +32,17 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "windows": {
+      "nsis": {
+        "displayLanguageSelector": false,
+        "languages": ["en-US"],
+        "installerIcon": "icons/icon.ico",
+        "installMode": "both",
+        "allowDowngrades": true,
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true
+      }
+    },
     "resources": [],
     "externalBin": [],
     "copyright": "",
