@@ -1,5 +1,5 @@
 {
-  "productName": "课件播放器",
+  "productName": "CoursewarePlayer",
   "version": "1.0.0",
   "identifier": "com.reedu.courseware",
   "build": {
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "课件播放器",
+        "title": "Courseware Player",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -32,11 +32,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "windows": {
-      "wix": {
-        "language": "zh-CN"
-      }
-    },
     "resources": [],
     "externalBin": [],
     "copyright": "",
