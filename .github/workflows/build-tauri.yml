@@ -105,6 +105,19 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -147,7 +160,19 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-  build-macos-x64:
+      - name: 上传构建产物 (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-linux
+          path: "src-tauri/target/release/bundle/deb/*.deb"
+          if-no-files-found: warn
+
+      - name: 上传构建产物 (macOS ARM64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-macos-arm64
+          path: "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
+          if-no-files-found: warn
     if: github.event.inputs.build_macos_x64 == 'true'
     permissions:
       contents: write
@@ -208,6 +233,19 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -249,6 +287,20 @@ jobs:
             - 平台: macOS (Intel)
           releaseDraft: true
           prerelease: false
+
+      - name: 上传构建产物 (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-linux
+          path: "src-tauri/target/release/bundle/deb/*.deb"
+          if-no-files-found: warn
+
+      - name: 上传构建产物 (macOS Intel)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-macos-x64
+          path: "src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg"
+          if-no-files-found: warn
 
   build-windows:
     if: github.event.inputs.build_windows == 'true'
@@ -310,6 +362,19 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -351,6 +416,20 @@ jobs:
             - 平台: Windows
           releaseDraft: true
           prerelease: false
+
+      - name: 上传构建产物 (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-linux
+          path: "src-tauri/target/release/bundle/deb/*.deb"
+          if-no-files-found: warn
+
+      - name: 上传构建产物 (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-windows
+          path: "src-tauri/target/release/bundle/msi/*.msi"
+          if-no-files-found: warn
 
   build-linux:
     if: github.event.inputs.build_linux == 'true'
@@ -413,6 +492,19 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
       - name: 安装 Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -467,4 +559,11 @@ jobs:
             - 平台: Linux
           releaseDraft: true
           prerelease: false
+
+      - name: 上传构建产物 (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: courseware-linux
+          path: "src-tauri/target/release/bundle/deb/*.deb"
+          if-no-files-found: warn
 
