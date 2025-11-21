@@ -2,22 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => {
-  // 动态导入 Tauri 插件（仅在 Tauri 环境中需要）
-  const plugins = [react()];
-  
-  // 检查是否在 Tauri 环境中
-  if (process.env.TAURI_PLATFORM || process.env.TAURI_DEV) {
-    try {
-      const { default: tauri } = await import('@tauri-apps/plugin-vite');
-      plugins.push(tauri());
-    } catch (e) {
-      console.warn('Tauri plugin not available, skipping...');
-    }
-  }
-  
-  return {
-    plugins,
+export default defineConfig({
+  plugins: [react()],
   server: {
     port: 3000,
     open: true
@@ -50,6 +36,5 @@ export default defineConfig(async () => {
   clearScreen: false,
   // 使用环境变量 `TAURI_DEV` 来检测是否在 Tauri 环境中
   envPrefix: ['VITE_', 'TAURI_'],
-  };
 });
 
