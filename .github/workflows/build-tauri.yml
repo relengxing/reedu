@@ -113,13 +113,15 @@ jobs:
       - name: 复制课件到 Tauri 资源目录
         shell: bash
         run: |
-          if [ -d "coursewares" ]; then
-            mkdir -p src-tauri/bundle/resources
+          # 确保资源目录存在，避免构建错误
+          mkdir -p src-tauri/bundle/resources
+          if [ -d "coursewares" ] && [ "$(ls -A coursewares 2>/dev/null)" ]; then
             cp -r coursewares/* src-tauri/bundle/resources/ || true
             echo "课件已复制到 Tauri 资源目录"
             ls -la src-tauri/bundle/resources/ | head -20
           else
-            echo "未找到课件目录，跳过复制"
+            echo "未找到课件目录，创建空资源目录"
+            touch src-tauri/bundle/resources/.gitkeep
           fi
 
       - name: 构建前端
@@ -214,13 +216,15 @@ jobs:
       - name: 复制课件到 Tauri 资源目录
         shell: bash
         run: |
-          if [ -d "coursewares" ]; then
-            mkdir -p src-tauri/bundle/resources
+          # 确保资源目录存在，避免构建错误
+          mkdir -p src-tauri/bundle/resources
+          if [ -d "coursewares" ] && [ "$(ls -A coursewares 2>/dev/null)" ]; then
             cp -r coursewares/* src-tauri/bundle/resources/ || true
             echo "课件已复制到 Tauri 资源目录"
             ls -la src-tauri/bundle/resources/ | head -20
           else
-            echo "未找到课件目录，跳过复制"
+            echo "未找到课件目录，创建空资源目录"
+            touch src-tauri/bundle/resources/.gitkeep
           fi
 
       - name: 构建前端
@@ -314,13 +318,15 @@ jobs:
       - name: 复制课件到 Tauri 资源目录
         shell: pwsh
         run: |
+          # 确保资源目录存在，避免构建错误
+          New-Item -ItemType Directory -Force -Path "src-tauri\bundle\resources" | Out-Null
           if (Test-Path "coursewares") {
-            New-Item -ItemType Directory -Force -Path "src-tauri\bundle\resources" | Out-Null
             Copy-Item -Path "coursewares\*" -Destination "src-tauri\bundle\resources\" -Recurse -Force
             Write-Host "课件已复制到 Tauri 资源目录"
             Get-ChildItem -Path "src-tauri\bundle\resources" -Recurse | Select-Object -First 20 | ForEach-Object { $_.FullName }
           } else {
-            Write-Host "未找到课件目录，跳过复制"
+            Write-Host "未找到课件目录，创建空资源目录"
+            New-Item -ItemType File -Force -Path "src-tauri\bundle\resources\.gitkeep" | Out-Null
           }
 
       - name: 构建前端
@@ -428,13 +434,15 @@ jobs:
       - name: 复制课件到 Tauri 资源目录
         shell: bash
         run: |
-          if [ -d "coursewares" ]; then
-            mkdir -p src-tauri/bundle/resources
+          # 确保资源目录存在，避免构建错误
+          mkdir -p src-tauri/bundle/resources
+          if [ -d "coursewares" ] && [ "$(ls -A coursewares 2>/dev/null)" ]; then
             cp -r coursewares/* src-tauri/bundle/resources/ || true
             echo "课件已复制到 Tauri 资源目录"
             ls -la src-tauri/bundle/resources/ | head -20
           else
-            echo "未找到课件目录，跳过复制"
+            echo "未找到课件目录，创建空资源目录"
+            touch src-tauri/bundle/resources/.gitkeep
           fi
 
       - name: 构建前端

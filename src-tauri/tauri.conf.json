@@ -32,9 +32,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "bundle/resources/**"
-    ],
+    "resources": [],
     "externalBin": [],
     "copyright": "",
     "category": "Education",
