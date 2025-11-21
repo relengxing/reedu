@@ -160,19 +160,14 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-      - name: 上传构建产物 (Linux)
-        uses: actions/upload-artifact@v4
-        with:
-          name: courseware-linux
-          path: "src-tauri/target/release/bundle/deb/*.deb"
-          if-no-files-found: warn
-
       - name: 上传构建产物 (macOS ARM64)
         uses: actions/upload-artifact@v4
         with:
           name: courseware-macos-arm64
           path: "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg"
           if-no-files-found: warn
+
+  build-macos-x64:
     if: github.event.inputs.build_macos_x64 == 'true'
     permissions:
       contents: write
@@ -287,13 +282,6 @@ jobs:
             - 平台: macOS (Intel)
           releaseDraft: true
           prerelease: false
-
-      - name: 上传构建产物 (Linux)
-        uses: actions/upload-artifact@v4
-        with:
-          name: courseware-linux
-          path: "src-tauri/target/release/bundle/deb/*.deb"
-          if-no-files-found: warn
 
       - name: 上传构建产物 (macOS Intel)
         uses: actions/upload-artifact@v4
@@ -416,13 +404,6 @@ jobs:
             - 平台: Windows
           releaseDraft: true
           prerelease: false
-
-      - name: 上传构建产物 (Linux)
-        uses: actions/upload-artifact@v4
-        with:
-          name: courseware-linux
-          path: "src-tauri/target/release/bundle/deb/*.deb"
-          if-no-files-found: warn
 
       - name: 上传构建产物 (Windows)
         uses: actions/upload-artifact@v4
