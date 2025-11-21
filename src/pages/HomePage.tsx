@@ -16,18 +16,6 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuth();
 
-  // 如果未登录，跳转到登录页
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate('/auth', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
-
-  // 如果未登录，显示加载状态（防止闪烁）
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <div
       style={{
@@ -43,9 +31,19 @@ const HomePage: React.FC = () => {
             欢迎使用 Reedu 课件系统
           </Title>
           <Paragraph style={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '18px' }}>
-            {user?.email ? `你好，${user.email.split('@')[0]}！` : '你好！'}
+            {isAuthenticated && user?.email ? `你好，${user.email.split('@')[0]}！` : '欢迎使用！'}
             开始您的教学之旅
           </Paragraph>
+          {!isAuthenticated && (
+            <Button
+              size="large"
+              type="default"
+              style={{ marginTop: '16px', background: 'rgba(255, 255, 255, 0.9)' }}
+              onClick={() => navigate('/auth')}
+            >
+              登录以使用云端同步
+            </Button>
+          )}
         </div>
 
         {/* 功能卡片 */}

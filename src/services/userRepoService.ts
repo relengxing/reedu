@@ -1,11 +1,14 @@
 /**
  * 用户仓库管理服务
- * 处理用户绑定的Git仓库的CRUD操作
+ * 支持云端存储（Supabase）和本地存储（localStorage）
  */
 
 import { supabase, SCHEMA, TABLES } from '../config/supabase';
 import { parseUserRepoUrl } from '../utils/urlParser';
 import type { Platform } from '../utils/urlParser';
+
+// localStorage 键名
+const LOCAL_REPOS_KEY = 'reedu_local_repos';
 
 export interface UserRepo {
   id: string;
@@ -17,9 +20,43 @@ export interface UserRepo {
 }
 
 /**
- * 获取用户绑定的仓库列表
+ * 从本地存储获取仓库
  */
-export async function getUserRepos(userId: string): Promise<UserRepo[]> {
+function getLocalRepos(): UserRepo[] {
+  try {
+    const stored = localStorage.getItem(LOCAL_REPOS_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (error) {
+    console.error('[UserRepoService] 读取本地仓库失败:', error);
+    return [];
+  }
+}
+
+/**
+ * 保存仓库到本地存储
+ */
+function saveLocalRepos(repos: UserRepo[]): void {
+  try {
+    localStorage.setItem(LOCAL_REPOS_KEY, JSON.stringify(repos));
+  } catch (error) {
+    console.error('[UserRepoService] 保存本地仓库失败:', error);
+    throw error;
+  }
+}
+
+/**
+ * 获取用户绑定的仓库列表
+ * 如果没有 userId（未登录），返回本地仓库
+ */
+export async function getUserRepos(userId?: string): Promise<UserRepo[]> {
+  // 未登录，返回本地仓库
+  if (!userId) {
+    console.log('[UserRepoService] 未登录，返回本地仓库');
+    return getLocalRepos();
+  }
+
+  // 已登录，从云端获取
   try {
     const { data, error } = await supabase
       .schema(SCHEMA)
@@ -48,41 +85,42 @@ export async function getUserRepos(userId: string): Promise<UserRepo[]> {
 }
 
 /**
- * 添加仓库
- * 自动解析URL并转换为raw URL
+ * 添加新仓库
+ * 如果没有 userId（未登录），保存到本地
  */
-export async function addUserRepo(
-  userId: string,
-  repoUrl: string
-): Promise<{ success: boolean; error?: string; repo?: UserRepo }> {
+export async function addUserRepo(userId: string | undefined, repoUrl: string): Promise<UserRepo> {
+  // 解析仓库URL
+  const parsed = parseUserRepoUrl(repoUrl);
+  if (!parsed) {
+    throw new Error('无效的仓库URL');
+  }
+
+  // 未登录，保存到本地
+  if (!userId) {
+    console.log('[UserRepoService] 未登录，保存到本地');
+    const localRepos = getLocalRepos();
+    const newRepo: UserRepo = {
+      id: `local_${Date.now()}`,
+      userId: 'local',
+      platform: parsed.platform,
+      repoUrl: parsed.repoUrl,
+      rawUrl: parsed.rawUrl,
+      createdAt: new Date().toISOString(),
+    };
+    localRepos.push(newRepo);
+    saveLocalRepos(localRepos);
+    return newRepo;
+  }
+
+  // 已登录，保存到云端
   try {
-    // 解析URL
-    const parsed = parseUserRepoUrl(repoUrl);
-    if (!parsed) {
-      return { success: false, error: '无法识别的仓库URL格式' };
-    }
-
-    // 检查是否已存在
-    const { data: existing } = await supabase
-      .schema(SCHEMA)
-      .from(TABLES.USER_REPOS)
-      .select('id')
-      .eq('user_id', userId)
-      .eq('raw_url', parsed.rawUrl)
-      .single();
-
-    if (existing) {
-      return { success: false, error: '该仓库已经添加过了' };
-    }
-
-    // 插入数据
     const { data, error } = await supabase
       .schema(SCHEMA)
       .from(TABLES.USER_REPOS)
       .insert({
         user_id: userId,
         platform: parsed.platform,
-        repo_url: repoUrl,
+        repo_url: parsed.repoUrl,
         raw_url: parsed.rawUrl,
       })
       .select()
@@ -90,63 +128,7 @@ export async function addUserRepo(
 
     if (error) {
       console.error('[UserRepoService] 添加仓库失败:', error);
-      return { success: false, error: error.message || '添加仓库失败' };
-    }
-
-    const repo: UserRepo = {
-      id: data.id,
-      userId: data.user_id,
-      platform: data.platform as Platform,
-      repoUrl: data.repo_url,
-      rawUrl: data.raw_url,
-      createdAt: data.created_at,
-    };
-
-    return { success: true, repo };
-  } catch (error) {
-    console.error('[UserRepoService] 添加仓库异常:', error);
-    return { success: false, error: '添加仓库失败' };
-  }
-}
-
-/**
- * 删除仓库
- */
-export async function removeUserRepo(repoId: string): Promise<{ success: boolean; error?: string }> {
-  try {
-    const { error } = await supabase
-      .schema(SCHEMA)
-      .from(TABLES.USER_REPOS)
-      .delete()
-      .eq('id', repoId);
-
-    if (error) {
-      console.error('[UserRepoService] 删除仓库失败:', error);
-      return { success: false, error: error.message || '删除仓库失败' };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('[UserRepoService] 删除仓库异常:', error);
-    return { success: false, error: '删除仓库失败' };
-  }
-}
-
-/**
- * 获取单个仓库信息
- */
-export async function getUserRepo(repoId: string): Promise<UserRepo | null> {
-  try {
-    const { data, error } = await supabase
-      .schema(SCHEMA)
-      .from(TABLES.USER_REPOS)
-      .select('*')
-      .eq('id', repoId)
-      .single();
-
-    if (error || !data) {
-      console.error('[UserRepoService] 获取仓库信息失败:', error);
-      return null;
+      throw new Error(`添加仓库失败: ${error.message}`);
     }
 
     return {
@@ -158,56 +140,44 @@ export async function getUserRepo(repoId: string): Promise<UserRepo | null> {
       createdAt: data.created_at,
     };
   } catch (error) {
-    console.error('[UserRepoService] 获取仓库信息异常:', error);
-    return null;
+    console.error('[UserRepoService] 添加仓库异常:', error);
+    throw error;
   }
 }
 
 /**
- * 更新仓库URL
+ * 删除仓库
+ * 如果是本地仓库ID（以 local_ 开头），从本地删除
  */
-export async function updateUserRepo(
-  repoId: string,
-  newRepoUrl: string
-): Promise<{ success: boolean; error?: string; repo?: UserRepo }> {
-  try {
-    // 解析新URL
-    const parsed = parseUserRepoUrl(newRepoUrl);
-    if (!parsed) {
-      return { success: false, error: '无法识别的仓库URL格式' };
-    }
+export async function deleteUserRepo(repoId: string): Promise<void> {
+  // 本地仓库
+  if (repoId.startsWith('local_')) {
+    console.log('[UserRepoService] 删除本地仓库:', repoId);
+    const localRepos = getLocalRepos();
+    const filteredRepos = localRepos.filter(r => r.id !== repoId);
+    saveLocalRepos(filteredRepos);
+    return;
+  }
 
-    // 更新数据
-    const { data, error } = await supabase
+  // 云端仓库
+  try {
+    const { error } = await supabase
       .schema(SCHEMA)
       .from(TABLES.USER_REPOS)
-      .update({
-        platform: parsed.platform,
-        repo_url: newRepoUrl,
-        raw_url: parsed.rawUrl,
-      })
-      .eq('id', repoId)
-      .select()
-      .single();
+      .delete()
+      .eq('id', repoId);
 
     if (error) {
-      console.error('[UserRepoService] 更新仓库失败:', error);
-      return { success: false, error: error.message || '更新仓库失败' };
+      console.error('[UserRepoService] 删除仓库失败:', error);
+      throw new Error(`删除仓库失败: ${error.message}`);
     }
-
-    const repo: UserRepo = {
-      id: data.id,
-      userId: data.user_id,
-      platform: data.platform as Platform,
-      repoUrl: data.repo_url,
-      rawUrl: data.raw_url,
-      createdAt: data.created_at,
-    };
-
-    return { success: true, repo };
   } catch (error) {
-    console.error('[UserRepoService] 更新仓库异常:', error);
-    return { success: false, error: '更新仓库失败' };
+    console.error('[UserRepoService] 删除仓库异常:', error);
+    throw error;
   }
 }
 
+/**
+ * 解析用户仓库URL并验证
+ */
+export { parseUserRepoUrl };

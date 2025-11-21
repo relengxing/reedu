@@ -14,6 +14,7 @@ import { parseHTMLCourseware } from '../utils/coursewareParser';
 import type { UploadFile } from 'antd';
 import PromptGenerator from '../components/PromptGenerator';
 import * as userRepoService from '../services/userRepoService';
+import { deleteUserRepo } from '../services/userRepoService';
 import * as coursewareSquareService from '../services/coursewareSquareService';
 import type { UserRepo } from '../services/userRepoService';
 import type { PublicCourseware } from '../services/coursewareSquareService';
@@ -113,16 +114,12 @@ const ConfigPage: React.FC = () => {
   // 删除用户仓库
   const handleRemoveUserRepo = async (repoId: string) => {
     try {
-      const { success, error } = await userRepoService.removeUserRepo(repoId);
-      if (success) {
-        message.success('仓库已删除');
-        // 刷新仓库列表显示
-        await loadUserRepos();
-        // 触发CoursewareContext重新加载课件
-        await loadUserReposFromContext();
-      } else {
-        message.error(error || '删除失败');
-      }
+      await deleteUserRepo(repoId);
+      message.success('仓库已删除');
+      // 刷新仓库列表显示
+      await loadUserRepos();
+      // 触发CoursewareContext重新加载课件
+      await loadUserReposFromContext();
     } catch (error) {
       message.error('删除失败');
     }
@@ -249,15 +246,42 @@ const ConfigPage: React.FC = () => {
       <Tabs
         defaultActiveKey="upload"
         items={[
-          // 我的仓库 - 需要登录
+          // 我的仓库 - 可选登录（登录后保存到云端，未登录保存到本地）
           {
             key: 'my-repos',
             label: '我的仓库',
-            children: isAuthenticated ? (
+            children: (
               <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {!isAuthenticated && (
+                  <Alert
+                    message="未登录 - 当前使用本地存储"
+                    description={
+                      <div>
+                        <p>您当前未登录，添加的仓库将保存到浏览器本地存储（仅在本设备可用）。</p>
+                        <Button type="link" style={{ padding: 0 }} onClick={() => navigate('/auth')}>
+                          登录以启用云端同步，在任何设备访问您的课件
+                        </Button>
+                      </div>
+                    }
+                    type="warning"
+                    showIcon
+                    style={{ marginBottom: '16px' }}
+                  />
+                )}
+                
+                {isAuthenticated && (
+                  <Alert
+                    message="已登录 - 云端同步已启用"
+                    description={`仓库配置将保存到云端（${user?.email}），您可以在任何设备访问。`}
+                    type="success"
+                    showIcon
+                    style={{ marginBottom: '16px' }}
+                  />
+                )}
+
                 <Alert
-                  message="绑定您的GitHub或Gitee仓库"
-                  description="添加仓库后,系统会自动加载仓库中的课件。您可以绑定多个仓库。"
+                  message={isAuthenticated ? "管理您的课件仓库" : "添加本地仓库"}
+                  description="添加 GitHub 或 Gitee 仓库后，系统会自动加载仓库中的课件。您可以添加多个仓库。"
                   type="info"
                   showIcon
                   action={
@@ -327,23 +351,9 @@ const ConfigPage: React.FC = () => {
                     )}
                     locale={{ emptyText: '暂无仓库,请添加' }}
                   />
-                </Card>
-              </Space>
-            ) : (
-              <Card>
-                <Alert
-                  message="需要登录"
-                  description="请先登录以管理您的课件仓库"
-                  type="warning"
-                  showIcon
-                  action={
-                    <Button type="primary" onClick={() => navigate('/auth')}>
-                      去登录
-                    </Button>
-                  }
-                />
-              </Card>
-            ),
+                  </Card>
+                </Space>
+              ),
           },
 
           // 本地上传课件

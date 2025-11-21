@@ -28,6 +28,14 @@ const DynamicCoursePage: React.FC = () => {
   const [pageIndex, setPageIndex] = useState<number>(0);
   const [shouldRenderPlayer, setShouldRenderPlayer] = useState(false);
 
+  // 每次路径变化时重置状态，确保显示正确的课件
+  useEffect(() => {
+    console.log('[DynamicCoursePage] 路径变化，重置状态:', location.pathname);
+    setShouldRenderPlayer(false);
+    setCoursewareIndex(-1);
+    setCoursewareData(null);
+  }, [location.pathname]);
+
   useEffect(() => {
     const loadCourseware = async () => {
       try {
@@ -149,11 +157,12 @@ const DynamicCoursePage: React.FC = () => {
             } else if (needsToAdd) {
               // 需要等待coursewares更新
               console.log('[DynamicCoursePage] 已添加课件到列表，等待更新，预期索引:', coursewares.length);
+              console.log('[DynamicCoursePage] 添加的课件名称:', targetCourseware.title);
               setCoursewareData(targetCourseware);
               setCoursewareIndex(coursewares.length);
               setCurrentCoursewareIndex(coursewares.length);
               setLoading(false);
-              // 不设置shouldRenderPlayer，等待useEffect检测到coursewares更新后再显示
+              setShouldRenderPlayer(false); // 等待useEffect检测到coursewares更新后再显示
               return;
             } else {
               // 目标课件已经在列表中，但是上面的查找没找到（不应该发生）

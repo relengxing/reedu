@@ -315,11 +315,6 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return;
     }
     
-    if (!user) {
-      console.log('[CoursewareContext] 用户未登录，跳过加载');
-      return;
-    }
-    
     if (isLoading) {
       console.log('[CoursewareContext] 正在加载中，跳过重复请求');
       return;
@@ -328,13 +323,14 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setHasLoadedUserRepos(true);
     setIsLoading(true);
     try {
-      // 从Supabase获取用户的仓库列表
-      const userRepos = await userRepoService.getUserRepos(user.id);
-      console.log('[CoursewareContext] 获取到用户仓库:', userRepos.length);
-      console.log('[CoursewareContext] 用户仓库详情:', userRepos.map(r => ({ id: r.id, url: r.rawUrl })));
+      // 获取用户的仓库列表（云端或本地）
+      const userId = user?.id; // 如果未登录，user?.id 为 undefined
+      const userRepos = await userRepoService.getUserRepos(userId);
+      console.log('[CoursewareContext] 获取到仓库:', userRepos.length, userId ? '(云端)' : '(本地)');
+      console.log('[CoursewareContext] 仓库详情:', userRepos.map(r => ({ id: r.id, url: r.rawUrl })));
       
       if (userRepos.length === 0) {
-        console.log('[CoursewareContext] 用户没有绑定仓库');
+        console.log('[CoursewareContext] 没有绑定仓库');
         setIsLoading(false);
         return;
       }
