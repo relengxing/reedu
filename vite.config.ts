@@ -1,8 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  plugins: [react()],
+// https://vitejs.dev/config/
+export default defineConfig(async () => {
+  // 动态导入 Tauri 插件（仅在 Tauri 环境中需要）
+  const plugins = [react()];
+  
+  // 检查是否在 Tauri 环境中
+  if (process.env.TAURI_PLATFORM || process.env.TAURI_DEV) {
+    try {
+      const { default: tauri } = await import('@tauri-apps/plugin-vite');
+      plugins.push(tauri());
+    } catch (e) {
+      console.warn('Tauri plugin not available, skipping...');
+    }
+  }
+  
+  return {
+    plugins,
   server: {
     port: 3000,
     open: true
@@ -10,6 +25,12 @@ export default defineConfig({
   // 注意：不要将 HTML 文件包含在 assetsInclude 中
   // 这样 ?raw 导入才能正确工作，将文件内容内联到代码中
   build: {
+    // Tauri 使用 Chromium 浏览器，需要设置目标
+    target: process.env.TAURI_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
+    // 不要压缩，让 Tauri 处理
+    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    // 生成 sourcemaps
+    sourcemap: !!process.env.TAURI_DEBUG,
     rollupOptions: {
       output: {
         // 确保资源文件正确命名
@@ -24,6 +45,11 @@ export default defineConfig({
   preview: {
     // 预览模式也支持history API fallback
     port: 4173
-  }
+  },
+  // Tauri 需要明确设置
+  clearScreen: false,
+  // 使用环境变量 `TAURI_DEV` 来检测是否在 Tauri 环境中
+  envPrefix: ['VITE_', 'TAURI_'],
+  };
 });
 

@@ -1,0 +1,462 @@
+name: '构建 Tauri 应用'
+
+on:
+  workflow_dispatch:
+    inputs:
+      courseware_repo:
+        description: '课件仓库地址 (例如: owner/repo)'
+        required: true
+        type: string
+      courseware_branch:
+        description: '课件仓库分支'
+        required: false
+        default: 'main'
+        type: string
+      courseware_folder:
+        description: '课件文件夹路径 (相对于仓库根目录)'
+        required: false
+        default: ''
+        type: string
+      build_macos_arm64:
+        description: '构建 macOS (Apple Silicon)'
+        required: false
+        default: false
+        type: boolean
+      build_macos_x64:
+        description: '构建 macOS (Intel)'
+        required: false
+        default: false
+        type: boolean
+      build_windows:
+        description: '构建 Windows'
+        required: false
+        default: false
+        type: boolean
+      build_linux:
+        description: '构建 Linux'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  COURSEWARE_REPO: ${{ github.event.inputs.courseware_repo }}
+  COURSEWARE_BRANCH: ${{ github.event.inputs.courseware_branch || 'main' }}
+  COURSEWARE_FOLDER: ${{ github.event.inputs.courseware_folder || '' }}
+
+jobs:
+  build-macos-arm64:
+    if: github.event.inputs.build_macos_arm64 == 'true'
+    permissions:
+      contents: write
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 jq
+        run: brew install jq
+
+      - name: 下载课件文件
+        shell: bash
+        run: |
+          echo "正在从 ${{ env.COURSEWARE_REPO }} 下载课件..."
+          RAW_URL="https://raw.githubusercontent.com/${{ env.COURSEWARE_REPO }}/${{ env.COURSEWARE_BRANCH }}"
+          
+          mkdir -p coursewares
+          
+          if [ -n "${{ env.COURSEWARE_FOLDER }}" ]; then
+            FOLDER_PATH="${{ env.COURSEWARE_FOLDER }}"
+            echo "下载文件夹: $FOLDER_PATH"
+            curl -s "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1" | \
+            jq -r ".tree[] | select(.path | startswith(\"$FOLDER_PATH/\")) | select(.type == \"blob\") | .path" | \
+            while read filepath; do
+              if [ -n "$filepath" ]; then
+                dir=$(dirname "$filepath")
+                mkdir -p "coursewares/$dir"
+                url="$RAW_URL/$filepath"
+                echo "下载: $filepath"
+                curl -L -f "$url" -o "coursewares/$filepath" || echo "下载失败: $filepath"
+              fi
+            done
+          else
+            echo "下载 manifest.json..."
+            curl -L -f "$RAW_URL/manifest.json" -o "coursewares/manifest.json" || echo "未找到 manifest.json"
+            curl -s "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1" | \
+            jq -r '.tree[] | select(.type == "blob") | .path' | \
+            while read filepath; do
+              if [ -n "$filepath" ]; then
+                dir=$(dirname "$filepath")
+                mkdir -p "coursewares/$dir"
+                url="$RAW_URL/$filepath"
+                echo "下载: $filepath"
+                curl -L -f "$url" -o "coursewares/$filepath" || echo "下载失败: $filepath"
+              fi
+            done
+          fi
+          
+          echo "课件下载完成"
+          find coursewares -type f | head -20
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: 复制课件到 Tauri 资源目录
+        shell: bash
+        run: |
+          if [ -d "coursewares" ]; then
+            mkdir -p src-tauri/bundle/resources
+            cp -r coursewares/* src-tauri/bundle/resources/ || true
+            echo "课件已复制到 Tauri 资源目录"
+            ls -la src-tauri/bundle/resources/ | head -20
+          else
+            echo "未找到课件目录，跳过复制"
+          fi
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: 构建 Tauri 应用
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COURSEWARE_REPO: ${{ env.COURSEWARE_REPO }}
+          COURSEWARE_BRANCH: ${{ env.COURSEWARE_BRANCH }}
+          COURSEWARE_FOLDER: ${{ env.COURSEWARE_FOLDER }}
+        with:
+          projectPath: '.'
+          args: '--target aarch64-apple-darwin'
+          tagName: 'v__VERSION__'
+          releaseName: '课件播放器 v__VERSION__ (macOS Apple Silicon)'
+          releaseBody: |
+            ## 变更日志
+            - 课件来源: ${{ env.COURSEWARE_REPO }} (${{ env.COURSEWARE_BRANCH }})
+            - 课件文件夹: ${{ env.COURSEWARE_FOLDER || '全部' }}
+            - 平台: macOS (Apple Silicon)
+          releaseDraft: true
+          prerelease: false
+
+  build-macos-x64:
+    if: github.event.inputs.build_macos_x64 == 'true'
+    permissions:
+      contents: write
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 jq
+        run: brew install jq
+
+      - name: 下载课件文件
+        shell: bash
+        run: |
+          echo "正在从 ${{ env.COURSEWARE_REPO }} 下载课件..."
+          RAW_URL="https://raw.githubusercontent.com/${{ env.COURSEWARE_REPO }}/${{ env.COURSEWARE_BRANCH }}"
+          
+          mkdir -p coursewares
+          
+          if [ -n "${{ env.COURSEWARE_FOLDER }}" ]; then
+            FOLDER_PATH="${{ env.COURSEWARE_FOLDER }}"
+            echo "下载文件夹: $FOLDER_PATH"
+            curl -s "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1" | \
+            jq -r ".tree[] | select(.path | startswith(\"$FOLDER_PATH/\")) | select(.type == \"blob\") | .path" | \
+            while read filepath; do
+              if [ -n "$filepath" ]; then
+                dir=$(dirname "$filepath")
+                mkdir -p "coursewares/$dir"
+                url="$RAW_URL/$filepath"
+                echo "下载: $filepath"
+                curl -L -f "$url" -o "coursewares/$filepath" || echo "下载失败: $filepath"
+              fi
+            done
+          else
+            echo "下载 manifest.json..."
+            curl -L -f "$RAW_URL/manifest.json" -o "coursewares/manifest.json" || echo "未找到 manifest.json"
+            curl -s "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1" | \
+            jq -r '.tree[] | select(.type == "blob") | .path' | \
+            while read filepath; do
+              if [ -n "$filepath" ]; then
+                dir=$(dirname "$filepath")
+                mkdir -p "coursewares/$dir"
+                url="$RAW_URL/$filepath"
+                echo "下载: $filepath"
+                curl -L -f "$url" -o "coursewares/$filepath" || echo "下载失败: $filepath"
+              fi
+            done
+          fi
+          
+          echo "课件下载完成"
+          find coursewares -type f | head -20
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin
+
+      - name: 复制课件到 Tauri 资源目录
+        shell: bash
+        run: |
+          if [ -d "coursewares" ]; then
+            mkdir -p src-tauri/bundle/resources
+            cp -r coursewares/* src-tauri/bundle/resources/ || true
+            echo "课件已复制到 Tauri 资源目录"
+            ls -la src-tauri/bundle/resources/ | head -20
+          else
+            echo "未找到课件目录，跳过复制"
+          fi
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: 构建 Tauri 应用
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COURSEWARE_REPO: ${{ env.COURSEWARE_REPO }}
+          COURSEWARE_BRANCH: ${{ env.COURSEWARE_BRANCH }}
+          COURSEWARE_FOLDER: ${{ env.COURSEWARE_FOLDER }}
+        with:
+          projectPath: '.'
+          args: '--target x86_64-apple-darwin'
+          tagName: 'v__VERSION__'
+          releaseName: '课件播放器 v__VERSION__ (macOS Intel)'
+          releaseBody: |
+            ## 变更日志
+            - 课件来源: ${{ env.COURSEWARE_REPO }} (${{ env.COURSEWARE_BRANCH }})
+            - 课件文件夹: ${{ env.COURSEWARE_FOLDER || '全部' }}
+            - 平台: macOS (Intel)
+          releaseDraft: true
+          prerelease: false
+
+  build-windows:
+    if: github.event.inputs.build_windows == 'true'
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载课件文件
+        shell: pwsh
+        run: |
+          Write-Host "正在从 ${{ env.COURSEWARE_REPO }} 下载课件..."
+          $rawUrl = "https://raw.githubusercontent.com/${{ env.COURSEWARE_REPO }}/${{ env.COURSEWARE_BRANCH }}"
+          
+          New-Item -ItemType Directory -Force -Path coursewares | Out-Null
+          
+          $treeUrl = "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1"
+          $treeResponse = Invoke-RestMethod -Uri $treeUrl
+          
+          $folderPath = "${{ env.COURSEWARE_FOLDER }}"
+          
+          foreach ($item in $treeResponse.tree) {
+            if ($item.type -eq "blob") {
+              $shouldDownload = $false
+              
+              if ([string]::IsNullOrEmpty($folderPath)) {
+                $shouldDownload = $true
+              } elseif ($item.path.StartsWith("$folderPath/")) {
+                $shouldDownload = $true
+              }
+              
+              if ($shouldDownload) {
+                $filePath = $item.path
+                $dir = Split-Path -Parent $filePath
+                if ($dir) {
+                  New-Item -ItemType Directory -Force -Path "coursewares\$dir" | Out-Null
+                }
+                $url = "$rawUrl/$filePath"
+                Write-Host "下载: $filePath"
+                try {
+                  Invoke-WebRequest -Uri $url -OutFile "coursewares\$filePath" -ErrorAction Stop
+                } catch {
+                  Write-Host "下载失败: $filePath"
+                }
+              }
+            }
+          }
+          
+          Write-Host "课件下载完成"
+          Get-ChildItem -Path coursewares -Recurse -File | Select-Object -First 20 | ForEach-Object { $_.FullName }
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: 复制课件到 Tauri 资源目录
+        shell: pwsh
+        run: |
+          if (Test-Path "coursewares") {
+            New-Item -ItemType Directory -Force -Path "src-tauri\bundle\resources" | Out-Null
+            Copy-Item -Path "coursewares\*" -Destination "src-tauri\bundle\resources\" -Recurse -Force
+            Write-Host "课件已复制到 Tauri 资源目录"
+            Get-ChildItem -Path "src-tauri\bundle\resources" -Recurse | Select-Object -First 20 | ForEach-Object { $_.FullName }
+          } else {
+            Write-Host "未找到课件目录，跳过复制"
+          }
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: 构建 Tauri 应用
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COURSEWARE_REPO: ${{ env.COURSEWARE_REPO }}
+          COURSEWARE_BRANCH: ${{ env.COURSEWARE_BRANCH }}
+          COURSEWARE_FOLDER: ${{ env.COURSEWARE_FOLDER }}
+        with:
+          projectPath: '.'
+          args: ''
+          tagName: 'v__VERSION__'
+          releaseName: '课件播放器 v__VERSION__ (Windows)'
+          releaseBody: |
+            ## 变更日志
+            - 课件来源: ${{ env.COURSEWARE_REPO }} (${{ env.COURSEWARE_BRANCH }})
+            - 课件文件夹: ${{ env.COURSEWARE_FOLDER || '全部' }}
+            - 平台: Windows
+          releaseDraft: true
+          prerelease: false
+
+  build-linux:
+    if: github.event.inputs.build_linux == 'true'
+    permissions:
+      contents: write
+    runs-on: ubuntu-20.04
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: 下载课件文件
+        shell: bash
+        run: |
+          echo "正在从 ${{ env.COURSEWARE_REPO }} 下载课件..."
+          RAW_URL="https://raw.githubusercontent.com/${{ env.COURSEWARE_REPO }}/${{ env.COURSEWARE_BRANCH }}"
+          
+          mkdir -p coursewares
+          
+          if [ -n "${{ env.COURSEWARE_FOLDER }}" ]; then
+            FOLDER_PATH="${{ env.COURSEWARE_FOLDER }}"
+            echo "下载文件夹: $FOLDER_PATH"
+            curl -s "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1" | \
+            jq -r ".tree[] | select(.path | startswith(\"$FOLDER_PATH/\")) | select(.type == \"blob\") | .path" | \
+            while read filepath; do
+              if [ -n "$filepath" ]; then
+                dir=$(dirname "$filepath")
+                mkdir -p "coursewares/$dir"
+                url="$RAW_URL/$filepath"
+                echo "下载: $filepath"
+                curl -L -f "$url" -o "coursewares/$filepath" || echo "下载失败: $filepath"
+              fi
+            done
+          else
+            echo "下载 manifest.json..."
+            curl -L -f "$RAW_URL/manifest.json" -o "coursewares/manifest.json" || echo "未找到 manifest.json"
+            curl -s "https://api.github.com/repos/${{ env.COURSEWARE_REPO }}/git/trees/${{ env.COURSEWARE_BRANCH }}?recursive=1" | \
+            jq -r '.tree[] | select(.type == "blob") | .path' | \
+            while read filepath; do
+              if [ -n "$filepath" ]; then
+                dir=$(dirname "$filepath")
+                mkdir -p "coursewares/$dir"
+                url="$RAW_URL/$filepath"
+                echo "下载: $filepath"
+                curl -L -f "$url" -o "coursewares/$filepath" || echo "下载失败: $filepath"
+              fi
+            done
+          fi
+          
+          echo "课件下载完成"
+          find coursewares -type f | head -20
+
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: 安装依赖 (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: 复制课件到 Tauri 资源目录
+        shell: bash
+        run: |
+          if [ -d "coursewares" ]; then
+            mkdir -p src-tauri/bundle/resources
+            cp -r coursewares/* src-tauri/bundle/resources/ || true
+            echo "课件已复制到 Tauri 资源目录"
+            ls -la src-tauri/bundle/resources/ | head -20
+          else
+            echo "未找到课件目录，跳过复制"
+          fi
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: 构建 Tauri 应用
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COURSEWARE_REPO: ${{ env.COURSEWARE_REPO }}
+          COURSEWARE_BRANCH: ${{ env.COURSEWARE_BRANCH }}
+          COURSEWARE_FOLDER: ${{ env.COURSEWARE_FOLDER }}
+        with:
+          projectPath: '.'
+          args: ''
+          tagName: 'v__VERSION__'
+          releaseName: '课件播放器 v__VERSION__ (Linux)'
+          releaseBody: |
+            ## 变更日志
+            - 课件来源: ${{ env.COURSEWARE_REPO }} (${{ env.COURSEWARE_BRANCH }})
+            - 课件文件夹: ${{ env.COURSEWARE_FOLDER || '全部' }}
+            - 平台: Linux
+          releaseDraft: true
+          prerelease: false
+

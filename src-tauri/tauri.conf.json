@@ -1,0 +1,49 @@
+{
+  "productName": "课件播放器",
+  "version": "1.0.0",
+  "identifier": "com.reedu.courseware",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devPath": "http://localhost:3000",
+    "distDir": "../dist",
+    "withGlobalTauri": false
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "课件播放器",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "bundle/resources/**"
+    ],
+    "externalBin": [],
+    "copyright": "",
+    "category": "Education",
+    "shortDescription": "通用课件播放框架",
+    "longDescription": "一个支持从 GitHub 仓库加载课件的通用播放框架"
+  },
+  "plugins": {}
+}
+
