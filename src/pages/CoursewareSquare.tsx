@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Row, Col, Input, Select, Spin, Typography, Tag, Button, Empty, Pagination, Space } from 'antd';
 import { SearchOutlined, EyeOutlined, LikeOutlined, HeartOutlined, HeartFilled, PlayCircleOutlined } from '@ant-design/icons';
+import ManagementLayout from '../components/ManagementLayout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as coursewareSquareService from '../services/coursewareSquareService';
@@ -117,13 +118,14 @@ const CoursewareSquare: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <Title level={2}>课件广场</Title>
-        <Text type="secondary">
-          发现和学习优质课件,{isAuthenticated ? '您可以点赞和播放课件' : '登录后可以点赞和发布课件'}
-        </Text>
-      </div>
+    <ManagementLayout>
+      <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+        <div style={{ marginBottom: '32px' }}>
+          <Title level={2} style={{ marginBottom: '16px' }}>课件广场</Title>
+          <Text type="secondary">
+            发现和学习优质课件,{isAuthenticated ? '您可以点赞和播放课件' : '登录后可以点赞和发布课件'}
+          </Text>
+        </div>
 
       {/* 搜索和筛选 */}
       <Card style={{ marginBottom: '24px' }}>
@@ -238,9 +240,10 @@ const CoursewareSquare: React.FC = () => {
               showTotal={(total) => `共 ${total} 个课件`}
             />
           </div>
-        </>
+        <        />
       )}
-    </div>
+      </div>
+    </ManagementLayout>
   );
 };
 

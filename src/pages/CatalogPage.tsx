@@ -2,7 +2,8 @@ import React from 'react';
 import { Card, List, Typography, Button, Space } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
-import { FileTextOutlined } from '@ant-design/icons';
+import { FileTextOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import ManagementLayout from '../components/ManagementLayout';
 
 const { Title } = Typography;
 
@@ -12,19 +13,45 @@ const CatalogPage: React.FC = () => {
 
   if (!courseware) {
     return (
-      <div style={{ padding: '24px', textAlign: 'center' }}>
-        <Title level={3}>暂无课件</Title>
-        <p>请先在首页导入课件</p>
-        <Button type="primary" onClick={() => navigate('/')}>
-          返回首页
-        </Button>
-      </div>
+      <ManagementLayout>
+        <div style={{ padding: '24px', textAlign: 'center', minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center' }}>
+          <Title level={3}>暂无课件</Title>
+          <p>请先在配置中心添加课件，或在课件导航中选择课件组</p>
+          <Space>
+            <Button type="primary" onClick={() => navigate('/config')}>
+              前往配置
+            </Button>
+            <Button onClick={() => navigate('/navigation')}>
+              课件导航
+            </Button>
+          </Space>
+        </div>
+      </ManagementLayout>
     );
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Title level={2}>{courseware.title}</Title>
+    <ManagementLayout>
+      <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <Title level={2} style={{ margin: 0 }}>{courseware.title}</Title>
+          <Button
+            type="primary"
+            icon={<PlayCircleOutlined />}
+            onClick={() => {
+              // 使用语义化URL跳转到第一页
+              if (courseware.platform && courseware.owner && courseware.repo && courseware.filePath) {
+                const courseFileName = courseware.filePath.split('/').pop()?.replace('.html', '') || '';
+                const folder = courseware.groupId || '';
+                navigate(`/${courseware.platform}/${courseware.owner}/${courseware.repo}/${folder}/${courseFileName}/0`);
+              } else {
+                navigate(`/player/${currentCoursewareIndex}/0`);
+              }
+            }}
+          >
+            开始播放
+          </Button>
+        </div>
       {courseware.metadata && (
         <Card style={{ marginBottom: '24px' }}>
           <Space direction="vertical">
@@ -68,7 +95,8 @@ const CatalogPage: React.FC = () => {
           )}
         />
       </Card>
-    </div>
+      </div>
+    </ManagementLayout>
   );
 };
 

@@ -3,14 +3,20 @@ import { Card, Typography, Button, Space, Row, Col, Tag, Input, message } from '
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
 import { FolderOutlined, FileTextOutlined, PlayCircleOutlined, LinkOutlined, CopyOutlined } from '@ant-design/icons';
+import ManagementLayout from '../components/ManagementLayout';
 
 const { Title, Text } = Typography;
 
 const NavigationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { bundledCoursewareGroups, coursewares, addBundledCourseware } = useCourseware();
+  const { bundledCoursewareGroups, coursewares, addBundledCourseware, loadUserRepos } = useCourseware();
   const [pendingNavigation, setPendingNavigation] = useState<{ sourcePath: string } | null>(null);
   const prevCoursewaresLengthRef = useRef(coursewares.length);
+  
+  // 页面加载时初始化课件
+  useEffect(() => {
+    loadUserRepos(); // 延迟加载课件
+  }, [loadUserRepos]);
 
   // 监听coursewares变化，当新课件添加完成后自动跳转
   useEffect(() => {
@@ -96,13 +102,12 @@ const NavigationPage: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
-      <Title level={2} style={{ marginBottom: '24px' }}>
-        课件导航
-      </Title>
-      <Text type="secondary" style={{ display: 'block', marginBottom: '32px' }}>
-        点击任意课件组，进入该组的第一页
-      </Text>
+    <ManagementLayout>
+      <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+        <Title level={2} style={{ marginBottom: '16px' }}>课件导航</Title>
+        <Text type="secondary" style={{ display: 'block', marginBottom: '32px' }}>
+          点击任意课件组，进入该组的第一页
+        </Text>
 
       <Row gutter={[24, 24]}>
         {bundledCoursewareGroups.map((group) => (
@@ -197,7 +202,8 @@ const NavigationPage: React.FC = () => {
           </Col>
         ))}
       </Row>
-    </div>
+      </div>
+    </ManagementLayout>
   );
 };
 

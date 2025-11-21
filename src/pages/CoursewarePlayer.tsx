@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { useCourseware } from '../context/CoursewareContext';
+import PlayerControls from '../components/player/PlayerControls';
 
 const { Text } = Typography;
 
@@ -37,6 +38,31 @@ const CoursewarePlayer: React.FC = () => {
   const scrollUpdateTimerRef = useRef<number | null>(null); // 滚动更新防抖定时器
   const [waitingForExternal, setWaitingForExternal] = useState(false);
   const isSemanticUrlPath = isSemanticUrl(location.pathname);
+  
+  // 从 localStorage 读取翻页按钮显示设置
+  const [showPageButtons, setShowPageButtons] = useState(() => {
+    const saved = localStorage.getItem('player_showPageButtons');
+    return saved === null ? true : saved === 'true';
+  });
+
+  // 监听 localStorage 变化
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('player_showPageButtons');
+      setShowPageButtons(saved === null ? true : saved === 'true');
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // 也监听自定义事件，用于同一页面内的更新
+    const interval = setInterval(() => {
+      handleStorageChange();
+    }, 200);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
   // 计算所有课件的总页面数和全局索引
   const getGlobalPageInfo = useMemo(() => {
@@ -533,9 +559,15 @@ const CoursewarePlayer: React.FC = () => {
   };
 
   return (
-    <div style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
-      {/* 上一页按钮 */}
-      {getCurrentGlobalIndex > 0 && (
+    <div style={{ height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0, overflow: 'hidden' }}>
+      {/* 播放器控制组件 */}
+      <PlayerControls
+        coursewares={coursewares}
+        currentCoursewareIndex={currentCoursewareIndex}
+      />
+
+      {/* 上一页按钮 - 根据设置显示 */}
+      {showPageButtons && getCurrentGlobalIndex > 0 && (
         <Button
           type="primary"
           shape="circle"
@@ -547,15 +579,15 @@ const CoursewarePlayer: React.FC = () => {
             top: '50%',
             left: '20px',
             transform: 'translateY(-50%)',
-            zIndex: 1000,
+            zIndex: 999,
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            background: 'rgba(0,0,0,0.2)',
+            background: 'rgba(0,0,0,0.3)',
           }}
         />
       )}
 
-      {/* 下一页按钮 */}
-      {getCurrentGlobalIndex < getGlobalPageInfo.totalPages - 1 && (
+      {/* 下一页按钮 - 根据设置显示 */}
+      {showPageButtons && getCurrentGlobalIndex < getGlobalPageInfo.totalPages - 1 && (
         <Button
           type="primary"
           shape="circle"
@@ -567,9 +599,9 @@ const CoursewarePlayer: React.FC = () => {
             top: '50%',
             right: '20px',
             transform: 'translateY(-50%)',
-            zIndex: 1000,
+            zIndex: 999,
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            background: 'rgba(0,0,0,0.2)',
+            background: 'rgba(0,0,0,0.3)',
           }}
         />
       )}
@@ -580,8 +612,8 @@ const CoursewarePlayer: React.FC = () => {
           position: 'fixed',
           bottom: '20px',
           right: '20px',
-          zIndex: 1000,
-          background: 'rgba(0,0,0,0.2)',
+          zIndex: 999,
+          background: 'rgba(0,0,0,0.3)',
           color: '#fff',
           padding: '8px 16px',
           borderRadius: '20px',
@@ -598,14 +630,18 @@ const CoursewarePlayer: React.FC = () => {
         </Text>
       </div>
 
-      {/* iframe展示完整HTML */}
+      {/* iframe展示完整HTML - 全屏透明无边框 */}
       <iframe
         ref={iframeRef}
         srcDoc={courseware.fullHTML}
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
           width: '100%',
           height: '100%',
           border: 'none',
+          background: 'transparent',
         }}
         sandbox="allow-same-origin allow-scripts allow-forms"
         title="课件内容"

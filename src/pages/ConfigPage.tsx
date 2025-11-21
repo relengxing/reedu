@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Input, Button, message, Typography, Space, List, Tabs, Upload, Tag, Popconfirm, Switch, Modal, Alert } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, DragOutlined, GithubOutlined, GlobalOutlined, EditOutlined, EyeOutlined, LikeOutlined } from '@ant-design/icons';
+import ManagementLayout from '../components/ManagementLayout';
 import { useNavigate } from 'react-router-dom';
 import { useCourseware } from '../context/CoursewareContext';
 import { useAuth } from '../context/AuthContext';
@@ -241,8 +242,9 @@ const ConfigPage: React.FC = () => {
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <Title level={2}>配置中心</Title>
+    <ManagementLayout>
+      <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <Title level={2} style={{ marginBottom: '24px' }}>配置中心</Title>
 
       <Tabs
         defaultActiveKey="upload"
@@ -574,7 +576,8 @@ const ConfigPage: React.FC = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+      </div>
+    </ManagementLayout>
   );
 };
 

@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, Tabs, Typography, message, Space } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { UserOutlined, LockOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,7 +26,8 @@ const AuthPage: React.FC = () => {
         message.error(error);
       } else {
         message.success('登录成功！');
-        navigate('/');
+        // 跳转到首页
+        navigate('/', { replace: true });
       }
     } catch (error) {
       message.error('登录失败');
@@ -80,7 +81,7 @@ const AuthPage: React.FC = () => {
 
   return (
     <div style={{
-      minHeight: 'calc(100vh - 64px)',
+      minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -88,6 +89,11 @@ const AuthPage: React.FC = () => {
       padding: '24px',
     }}>
       <Card style={{ width: '100%', maxWidth: '450px' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+          <Button icon={<HomeOutlined />} onClick={() => navigate('/')} type="link">
+            返回首页
+          </Button>
+        </div>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <Title level={2}>Reedu 课件系统</Title>
           <Text type="secondary">登录或注册以使用完整功能</Text>
