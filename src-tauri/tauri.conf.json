@@ -4,10 +4,7 @@
   "identifier": "com.reedu.courseware",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:3000",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
