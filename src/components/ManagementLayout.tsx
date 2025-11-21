@@ -4,7 +4,6 @@ import type { MenuProps } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   HomeOutlined,
-  GlobalOutlined,
   SettingOutlined,
   FileTextOutlined,
   UserOutlined,
@@ -41,12 +40,6 @@ const ManagementLayout: React.FC<ManagementLayoutProps> = ({ children }) => {
       icon: <FileTextOutlined />,
       label: '课件导航',
       onClick: () => navigate('/navigation'),
-    },
-    {
-      key: '/square',
-      icon: <GlobalOutlined />,
-      label: '课件广场',
-      onClick: () => navigate('/square'),
     },
     {
       key: '/config',

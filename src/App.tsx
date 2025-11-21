@@ -7,7 +7,6 @@ import CoursewarePlayer from './pages/CoursewarePlayer';
 import CoursePage from './pages/CoursePage';
 import ConfigPage from './pages/ConfigPage';
 import DynamicCoursePage from './pages/DynamicCoursePage';
-import CoursewareSquare from './pages/CoursewareSquare';
 import AuthPage from './pages/AuthPage';
 import { CoursewareProvider } from './context/CoursewareContext';
 import { AuthProvider } from './context/AuthContext';
@@ -23,7 +22,6 @@ const App: React.FC = () => {
             <Route path="/navigation" element={<NavigationPage />} />
             <Route path="/config" element={<ConfigPage />} />
             <Route path="/catalog" element={<CatalogPage />} />
-            <Route path="/square" element={<CoursewareSquare />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/player/:coursewareIndex/:pageIndex" element={<CoursewarePlayer />} />
             <Route path="/player/:pageIndex" element={<CoursewarePlayer />} />

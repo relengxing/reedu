@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   RocketOutlined,
-  GlobalOutlined,
   SettingOutlined,
   BookOutlined,
   PlayCircleOutlined,
@@ -69,31 +68,6 @@ const HomePage: React.FC = () => {
               </Title>
               <Text type="secondary" style={{ textAlign: 'center' }}>
                 浏览和管理您的课件组
-              </Text>
-            </Card>
-          </Col>
-
-          {/* 课件广场 */}
-          <Col xs={24} sm={12} lg={6}>
-            <Card
-              hoverable
-              onClick={() => navigate('/square')}
-              style={{ height: '100%' }}
-              styles={{
-                body: {
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '32px',
-                },
-              }}
-            >
-              <GlobalOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
-              <Title level={4} style={{ marginBottom: '8px' }}>
-                课件广场
-              </Title>
-              <Text type="secondary" style={{ textAlign: 'center' }}>
-                发现和分享优质课件
               </Text>
             </Card>
           </Col>
@@ -181,7 +155,7 @@ const HomePage: React.FC = () => {
                       2️⃣ 浏览课件
                     </Title>
                     <Paragraph>
-                      在<Text strong>课件导航</Text>中选择课件组，或在<Text strong>课件广场</Text>发现优质课件
+                      在<Text strong>课件导航</Text>中选择课件组，浏览您的课件
                     </Paragraph>
                   </div>
                 </Col>
