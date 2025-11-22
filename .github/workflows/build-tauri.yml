@@ -405,6 +405,59 @@ jobs:
           releaseDraft: true
           prerelease: false
 
+      - name: 检查构建后的文件结构
+        shell: pwsh
+        run: |
+          Write-Host "=== 检查 dist 目录（构建前） ==="
+          if (Test-Path "dist") {
+            Write-Host "dist 目录存在"
+            Get-ChildItem -Path "dist" -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+          } else {
+            Write-Host "错误: dist 目录不存在!"
+          }
+          
+          Write-Host "`n=== 检查 release 目录 ==="
+          if (Test-Path "src-tauri\target\release") {
+            Write-Host "release 目录存在"
+            Write-Host "主要文件:"
+            Get-ChildItem -Path "src-tauri\target\release" -File | Select-Object Name, Length | Format-Table -AutoSize
+            Write-Host "子目录:"
+            Get-ChildItem -Path "src-tauri\target\release" -Directory | Select-Object Name | Format-Table -AutoSize
+          }
+          
+          Write-Host "`n=== 检查资源文件是否被打包 ==="
+          $resourcePaths = @(
+            "src-tauri\target\release\resources",
+            "src-tauri\target\release\bundle\resources"
+          )
+          foreach ($path in $resourcePaths) {
+            if (Test-Path $path) {
+              Write-Host "找到资源目录: $path"
+              Get-ChildItem -Path $path -Recurse | Select-Object FullName, Length | Format-Table -AutoSize
+              $indexHtml = Join-Path $path "index.html"
+              if (Test-Path $indexHtml) {
+                Write-Host "✓ index.html 在资源目录中!"
+              } else {
+                Write-Host "✗ index.html 不在资源目录中"
+              }
+            }
+          }
+          
+          Write-Host "`n=== 检查 bundle 目录 ==="
+          if (Test-Path "src-tauri\target\release\bundle") {
+            Write-Host "bundle 目录存在"
+            Get-ChildItem -Path "src-tauri\target\release\bundle" -Recurse -Depth 1 | Select-Object FullName, Length | Format-Table -AutoSize
+          }
+          
+          Write-Host "`n=== 检查 NSIS 安装程序 ==="
+          $nsisExe = Get-ChildItem -Path "src-tauri\target\release\bundle\nsis" -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($nsisExe) {
+            Write-Host "NSIS 安装程序: $($nsisExe.FullName)"
+            Write-Host "文件大小: $([math]::Round($nsisExe.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "未找到 NSIS 安装程序"
+          }
+
       - name: 上传构建产物 (Windows)
         uses: actions/upload-artifact@v4
         with:

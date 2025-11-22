@@ -8,11 +8,6 @@
     "devUrl": "http://localhost:3000",
     "frontendDist": "../dist"
   },
-  "plugins": {
-    "fs": {
-      "scope": ["**"]
-    }
-  },
   "app": {
     "windows": [
       {
@@ -40,7 +35,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [],
+    "resources": ["../dist/**"],
     "externalBin": [],
     "copyright": "",
     "category": "Education",
