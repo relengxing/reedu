@@ -2,6 +2,8 @@
 // 临时启用控制台以便调试白屏问题
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use tauri::Manager;
+
 fn main() {
     println!("Tauri application starting...");
     println!("Current directory: {:?}", std::env::current_dir());
