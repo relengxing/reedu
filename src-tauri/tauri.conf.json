@@ -32,11 +32,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "windows": {
-      "nsis": {
-        "installMode": "portable"
-      }
-    },
     "resources": [],
     "externalBin": [],
     "copyright": "",

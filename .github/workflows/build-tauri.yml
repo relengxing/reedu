@@ -410,8 +410,8 @@ jobs:
         with:
           name: courseware-windows
           path: |
-            src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/courseware-framework.exe
           if-no-files-found: warn
 
   build-linux:
