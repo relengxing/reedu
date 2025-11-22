@@ -3,8 +3,16 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    println!("Tauri application starting...");
+    println!("Current directory: {:?}", std::env::current_dir());
+    
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .setup(|app| {
+            println!("Tauri app setup complete");
+            println!("App path: {:?}", app.path());
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

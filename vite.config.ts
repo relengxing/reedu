@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   // Tauri 需要设置 base 为相对路径
-  base: process.env.TAURI_PLATFORM ? './' : '/',
+  base: './',
   server: {
     port: 3000,
     open: true
