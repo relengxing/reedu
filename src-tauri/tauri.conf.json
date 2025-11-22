@@ -8,6 +8,11 @@
     "devUrl": "http://localhost:3000",
     "frontendDist": "../dist"
   },
+  "plugins": {
+    "fs": {
+      "scope": ["**"]
+    }
+  },
   "app": {
     "windows": [
       {
