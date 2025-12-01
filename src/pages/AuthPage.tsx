@@ -3,12 +3,10 @@
  */
 
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, Tabs, Typography, message, Space } from 'antd';
+import { Form, Input, Button, Tabs, message } from 'antd';
 import { UserOutlined, LockOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-const { Title, Text, Link } = Typography;
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate();
@@ -80,190 +78,238 @@ const AuthPage: React.FC = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '24px',
-    }}>
-      <Card style={{ width: '100%', maxWidth: '450px' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-          <Button icon={<HomeOutlined />} onClick={() => navigate('/')} type="link">
-            返回首页
-          </Button>
+    <div className="min-h-screen flex items-center justify-center gradient-bg p-6">
+      <div className="w-full max-w-md">
+        <div className="glass-card p-8 animate-slide-up">
+          {/* Back to Home Button */}
+          <div className="flex justify-center mb-3">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <HomeOutlined />
+              <span>返回首页</span>
+            </button>
+          </div>
+
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Reedu 课件系统</h1>
+            <p className="text-gray-600">登录或注册以使用完整功能</p>
+          </div>
+
+          {/* Tabs */}
+          <Tabs
+            activeKey={activeTab}
+            onChange={(key) => {
+              setActiveTab(key as any);
+              form.resetFields();
+            }}
+            centered
+            items={[
+              {
+                key: 'signin',
+                label: <span className="text-base font-medium">🔐 登录</span>,
+                children: (
+                  <Form
+                    form={form}
+                    name="signin"
+                    onFinish={handleSignIn}
+                    autoComplete="off"
+                    layout="vertical"
+                    className="mt-6"
+                  >
+                    <Form.Item
+                      name="email"
+                      rules={[
+                        { required: true, message: '请输入邮箱' },
+                        { type: 'email', message: '请输入有效的邮箱地址' },
+                      ]}
+                    >
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder="邮箱"
+                        size="large"
+                        className="rounded-lg"
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="password"
+                      rules={[{ required: true, message: '请输入密码' }]}
+                    >
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder="密码"
+                        size="large"
+                        className="rounded-lg"
+                      />
+                    </Form.Item>
+
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={loading}
+                        block
+                        size="large"
+                        className="h-12 text-base font-semibold rounded-lg"
+                      >
+                        登录
+                      </Button>
+                    </Form.Item>
+
+                    <div className="text-center">
+                      <button
+                        onClick={() => setActiveTab('reset')}
+                        className="text-blue-600 hover:text-blue-700 hover:underline transition-all"
+                      >
+                        忘记密码?
+                      </button>
+                    </div>
+                  </Form>
+                ),
+              },
+              {
+                key: 'signup',
+                label: <span className="text-base font-medium">📝 注册</span>,
+                children: (
+                  <Form
+                    form={form}
+                    name="signup"
+                    onFinish={handleSignUp}
+                    autoComplete="off"
+                    layout="vertical"
+                    className="mt-6"
+                  >
+                    <Form.Item
+                      name="email"
+                      rules={[
+                        { required: true, message: '请输入邮箱' },
+                        { type: 'email', message: '请输入有效的邮箱地址' },
+                      ]}
+                    >
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder="邮箱"
+                        size="large"
+                        className="rounded-lg"
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="password"
+                      rules={[
+                        { required: true, message: '请输入密码' },
+                        { min: 6, message: '密码至少6位' },
+                      ]}
+                    >
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder="密码(至少6位)"
+                        size="large"
+                        className="rounded-lg"
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="confirmPassword"
+                      rules={[{ required: true, message: '请确认密码' }]}
+                    >
+                      <Input.Password
+                        prefix={<LockOutlined />}
+                        placeholder="确认密码"
+                        size="large"
+                        className="rounded-lg"
+                      />
+                    </Form.Item>
+
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={loading}
+                        block
+                        size="large"
+                        className="h-12 text-base font-semibold rounded-lg"
+                      >
+                        注册
+                      </Button>
+                    </Form.Item>
+                  </Form>
+                ),
+              },
+              {
+                key: 'reset',
+                label: <span className="text-base font-medium">🔑 重置密码</span>,
+                children: (
+                  <Form
+                    form={form}
+                    name="reset"
+                    onFinish={handleResetPassword}
+                    autoComplete="off"
+                    layout="vertical"
+                    className="mt-6"
+                  >
+                    <Form.Item
+                      name="email"
+                      rules={[
+                        { required: true, message: '请输入邮箱' },
+                        { type: 'email', message: '请输入有效的邮箱地址' },
+                      ]}
+                    >
+                      <Input
+                        prefix={<MailOutlined />}
+                        placeholder="注册时使用的邮箱"
+                        size="large"
+                        className="rounded-lg"
+                      />
+                    </Form.Item>
+
+                    <Form.Item>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        loading={loading}
+                        block
+                        size="large"
+                        className="h-12 text-base font-semibold rounded-lg"
+                      >
+                        发送重置邮件
+                      </Button>
+                    </Form.Item>
+
+                    <div className="text-center">
+                      <p className="text-sm text-gray-500">
+                        我们将发送密码重置链接到您的邮箱
+                      </p>
+                    </div>
+                  </Form>
+                ),
+              },
+            ]}
+          />
+
+          {/* Footer */}
+          <div className="mt-8 text-center">
+            <button
+              onClick={() => navigate('/')}
+              className="text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              返回首页
+            </button>
+          </div>
         </div>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <Title level={2}>Reedu 课件系统</Title>
-          <Text type="secondary">登录或注册以使用完整功能</Text>
+
+        {/* Additional Info */}
+        <div className="mt-6 text-center">
+          <p className="text-white/80 text-sm">
+            使用 Reedu 课件系统，让教学更简单
+          </p>
         </div>
-
-        <Tabs
-          activeKey={activeTab}
-          onChange={(key) => {
-            setActiveTab(key as any);
-            form.resetFields();
-          }}
-          centered
-          items={[
-            {
-              key: 'signin',
-              label: '登录',
-              children: (
-                <Form
-                  form={form}
-                  name="signin"
-                  onFinish={handleSignIn}
-                  autoComplete="off"
-                  layout="vertical"
-                >
-                  <Form.Item
-                    name="email"
-                    rules={[
-                      { required: true, message: '请输入邮箱' },
-                      { type: 'email', message: '请输入有效的邮箱地址' },
-                    ]}
-                  >
-                    <Input
-                      prefix={<MailOutlined />}
-                      placeholder="邮箱"
-                      size="large"
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    name="password"
-                    rules={[{ required: true, message: '请输入密码' }]}
-                  >
-                    <Input.Password
-                      prefix={<LockOutlined />}
-                      placeholder="密码"
-                      size="large"
-                    />
-                  </Form.Item>
-
-                  <Form.Item>
-                    <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                      登录
-                    </Button>
-                  </Form.Item>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <Link onClick={() => setActiveTab('reset')}>忘记密码?</Link>
-                  </div>
-                </Form>
-              ),
-            },
-            {
-              key: 'signup',
-              label: '注册',
-              children: (
-                <Form
-                  form={form}
-                  name="signup"
-                  onFinish={handleSignUp}
-                  autoComplete="off"
-                  layout="vertical"
-                >
-                  <Form.Item
-                    name="email"
-                    rules={[
-                      { required: true, message: '请输入邮箱' },
-                      { type: 'email', message: '请输入有效的邮箱地址' },
-                    ]}
-                  >
-                    <Input
-                      prefix={<MailOutlined />}
-                      placeholder="邮箱"
-                      size="large"
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    name="password"
-                    rules={[
-                      { required: true, message: '请输入密码' },
-                      { min: 6, message: '密码至少6位' },
-                    ]}
-                  >
-                    <Input.Password
-                      prefix={<LockOutlined />}
-                      placeholder="密码(至少6位)"
-                      size="large"
-                    />
-                  </Form.Item>
-
-                  <Form.Item
-                    name="confirmPassword"
-                    rules={[{ required: true, message: '请确认密码' }]}
-                  >
-                    <Input.Password
-                      prefix={<LockOutlined />}
-                      placeholder="确认密码"
-                      size="large"
-                    />
-                  </Form.Item>
-
-                  <Form.Item>
-                    <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                      注册
-                    </Button>
-                  </Form.Item>
-                </Form>
-              ),
-            },
-            {
-              key: 'reset',
-              label: '重置密码',
-              children: (
-                <Form
-                  form={form}
-                  name="reset"
-                  onFinish={handleResetPassword}
-                  autoComplete="off"
-                  layout="vertical"
-                >
-                  <Form.Item
-                    name="email"
-                    rules={[
-                      { required: true, message: '请输入邮箱' },
-                      { type: 'email', message: '请输入有效的邮箱地址' },
-                    ]}
-                  >
-                    <Input
-                      prefix={<MailOutlined />}
-                      placeholder="注册时使用的邮箱"
-                      size="large"
-                    />
-                  </Form.Item>
-
-                  <Form.Item>
-                    <Button type="primary" htmlType="submit" loading={loading} block size="large">
-                      发送重置邮件
-                    </Button>
-                  </Form.Item>
-
-                  <div style={{ textAlign: 'center' }}>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                      我们将发送密码重置链接到您的邮箱
-                    </Text>
-                  </div>
-                </Form>
-              ),
-            },
-          ]}
-        />
-
-        <div style={{ marginTop: '24px', textAlign: 'center' }}>
-          <Button type="link" onClick={() => navigate('/')}>
-            返回首页
-          </Button>
-        </div>
-      </Card>
+      </div>
     </div>
   );
 };
 
 export default AuthPage;
-

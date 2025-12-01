@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, message, Typography, Space, List, Tabs, Upload, Tag, Popconfirm, Alert } from 'antd';
+import { Form, Input, Button, message, Space, List, Tabs, Upload, Tag, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined, UploadOutlined, DragOutlined, GithubOutlined, GlobalOutlined } from '@ant-design/icons';
 import ManagementLayout from '../components/ManagementLayout';
 import { useNavigate } from 'react-router-dom';
@@ -17,7 +17,6 @@ import * as userRepoService from '../services/userRepoService';
 import { deleteUserRepo } from '../services/userRepoService';
 import type { UserRepo } from '../services/userRepoService';
 
-const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
 
 const ConfigPage: React.FC = () => {
@@ -148,212 +147,234 @@ const ConfigPage: React.FC = () => {
 
   return (
     <ManagementLayout>
-      <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-        <Title level={2} style={{ marginBottom: '24px' }}>配置中心</Title>
+      <div className="p-6 md:p-8 max-w-7xl mx-auto">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6">配置中心</h2>
 
-      <Tabs
-        defaultActiveKey="upload"
-        items={[
-          // 我的仓库 - 可选登录（登录后保存到云端，未登录保存到本地）
-          {
-            key: 'my-repos',
-            label: '我的仓库',
-            children: (
-              <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                {!isAuthenticated && (
-                  <Alert
-                    message="未登录 - 当前使用本地存储"
-                    description={
-                      <div>
-                        <p>您当前未登录，添加的仓库将保存到浏览器本地存储（仅在本设备可用）。</p>
-                        <Button type="link" style={{ padding: 0 }} onClick={() => navigate('/auth')}>
-                          登录以启用云端同步，在任何设备访问您的课件
-                        </Button>
+        <Tabs
+          defaultActiveKey="upload"
+          items={[
+            // 我的仓库 - 可选登录（登录后保存到云端，未登录保存到本地）
+            {
+              key: 'my-repos',
+              label: <span className="text-base font-medium">📁 我的仓库</span>,
+              children: (
+                <div className="space-y-6">
+                  {!isAuthenticated && (
+                    <div className="glass-card p-6 border-l-4 border-amber-400">
+                      <div className="flex gap-3">
+                        <div className="text-2xl">⚠️</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 mb-2">未登录 - 当前使用本地存储</h4>
+                          <p className="text-gray-700 mb-2">您当前未登录，添加的仓库将保存到浏览器本地存储（仅在本设备可用）。</p>
+                          <button
+                            onClick={() => navigate('/auth')}
+                            className="text-blue-600 hover:text-blue-700 font-medium underline"
+                          >
+                            登录以启用云端同步，在任何设备访问您的课件
+                          </button>
+                        </div>
                       </div>
-                    }
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: '16px' }}
-                  />
-                )}
-                
-                {isAuthenticated && (
-                  <Alert
-                    message="已登录 - 云端同步已启用"
-                    description={`仓库配置将保存到云端（${user?.email}），您可以在任何设备访问。`}
-                    type="success"
-                    showIcon
-                    style={{ marginBottom: '16px' }}
-                  />
-                )}
-
-                <Alert
-                  message={isAuthenticated ? "管理您的课件仓库" : "添加本地仓库"}
-                  description="添加 GitHub 或 Gitee 仓库后，系统会自动加载仓库中的课件。您可以添加多个仓库。"
-                  type="info"
-                  showIcon
-                  action={
-                    <Popconfirm
-                      title="确定要清理缓存吗?"
-                      description="这将清除所有本地缓存的课件数据并刷新页面"
-                      onConfirm={handleClearCache}
-                    >
-                      <Button size="small" danger>
-                        清理缓存
-                      </Button>
-                    </Popconfirm>
-                  }
-                />
-
-                <Card>
-                  <Form form={form} layout="inline" onFinish={handleAddUserRepo}>
-                    <Form.Item
-                      name="repoUrl"
-                      rules={[{ required: true, message: '请输入仓库URL' }]}
-                      style={{ flex: 1, minWidth: '300px' }}
-                    >
-                      <Input
-                        placeholder="https://github.com/user/repo 或 gitee/user/project"
-                        prefix={<GithubOutlined />}
-                      />
-                    </Form.Item>
-                    <Form.Item>
-                      <Button type="primary" htmlType="submit" icon={<PlusOutlined />}>
-                        添加仓库
-                      </Button>
-                    </Form.Item>
-                  </Form>
-                </Card>
-
-                <Card title="我的仓库列表" loading={loadingRepos}>
-                  <List
-                    dataSource={userRepos}
-                    renderItem={(repo) => (
-                      <List.Item
-                        actions={[
-                          <Popconfirm
-                            title="确定要删除这个仓库吗?"
-                            onConfirm={() => handleRemoveUserRepo(repo.id)}
-                          >
-                            <Button size="small" danger icon={<DeleteOutlined />}>
-                              删除
-                            </Button>
-                          </Popconfirm>,
-                        ]}
-                      >
-                        <List.Item.Meta
-                          avatar={repo.platform === 'github' ? <GithubOutlined style={{ fontSize: '24px' }} /> : <GlobalOutlined style={{ fontSize: '24px' }} />}
-                          title={repo.repoUrl}
-                          description={
-                            <Space>
-                              <Tag color={repo.platform === 'github' ? 'blue' : 'orange'}>
-                                {repo.platform}
-                              </Tag>
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {new Date(repo.createdAt).toLocaleDateString()}
-                              </Text>
-                            </Space>
-                          }
-                        />
-                      </List.Item>
-                    )}
-                    locale={{ emptyText: '暂无仓库,请添加' }}
-                  />
-                  </Card>
-                </Space>
-              ),
-          },
-
-          // 本地上传课件
-          {
-            key: 'upload',
-            label: '本地上传课件',
-            children: (
-              <Card>
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                  <div>
-                    <Title level={4}>导入HTML课件</Title>
-                    <Paragraph>
-                      请上传符合规范的HTML课件文件。课件将被自动切分为多个页面，并统一处理数学公式。
-                    </Paragraph>
-                  </div>
-                  <Upload {...uploadProps}>
-                    <Button icon={<UploadOutlined />}>选择HTML文件（可多选）</Button>
-                  </Upload>
-
-                  {coursewares.length > 0 && (
-                    <div>
-                      <Title level={5}>已导入的课件（{coursewares.length}个）：</Title>
-                      <Space direction="vertical" style={{ width: '100%' }}>
-                        {coursewares.map((cw, index) => (
-                          <Card
-                            key={index}
-                            size="small"
-                            style={{
-                              background: '#f5f5f5',
-                              cursor: 'move',
-                              opacity: draggedIndex === index ? 0.5 : 1,
-                              border: dragOverIndex === index ? '2px dashed #1890ff' : '1px solid #d9d9d9',
-                            }}
-                            draggable
-                            onDragStart={() => setDraggedIndex(index)}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              setDragOverIndex(index);
-                            }}
-                            onDragLeave={() => setDragOverIndex(null)}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              if (draggedIndex !== null && draggedIndex !== index) {
-                                reorderCoursewares(draggedIndex, index);
-                              }
-                              setDraggedIndex(null);
-                              setDragOverIndex(null);
-                            }}
-                          >
-                            <Space>
-                              <DragOutlined style={{ color: '#999', cursor: 'grab' }} />
-                              <span>{index + 1}. {cw.title}</span>
-                              <Button
-                                size="small"
-                                type="link"
-                                onClick={() => {
-                                  setCurrentCoursewareIndex(index);
-                                  navigate('/catalog');
-                                }}
-                              >
-                                查看目录
-                              </Button>
-                              <Popconfirm
-                                title="确定要删除这个课件吗?"
-                                onConfirm={() => {
-                                  removeCourseware(index);
-                                  message.success('已删除');
-                                }}
-                              >
-                                <Button size="small" danger type="link" icon={<DeleteOutlined />}>
-                                  删除
-                                </Button>
-                              </Popconfirm>
-                            </Space>
-                          </Card>
-                        ))}
-                      </Space>
                     </div>
                   )}
-                </Space>
-              </Card>
-            ),
-          },
+                  
+                  {isAuthenticated && (
+                    <div className="glass-card p-6 border-l-4 border-green-400">
+                      <div className="flex gap-3">
+                        <div className="text-2xl">✅</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 mb-2">已登录 - 云端同步已启用</h4>
+                          <p className="text-gray-700">仓库配置将保存到云端（{user?.email}），您可以在任何设备访问。</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-          // 提示词生成器
-          {
-            key: 'prompt',
-            label: '生成提示词',
-            children: <PromptGenerator />,
-          },
-        ]}
-      />
+                  <div className="glass-card p-6 border-l-4 border-blue-400">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex gap-3 flex-1">
+                        <div className="text-2xl">ℹ️</div>
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-800 mb-2">
+                            {isAuthenticated ? "管理您的课件仓库" : "添加本地仓库"}
+                          </h4>
+                          <p className="text-gray-700">添加 GitHub 或 Gitee 仓库后，系统会自动加载仓库中的课件。您可以添加多个仓库。</p>
+                        </div>
+                      </div>
+                      <Popconfirm
+                        title="确定要清理缓存吗?"
+                        description="这将清除所有本地缓存的课件数据并刷新页面"
+                        onConfirm={handleClearCache}
+                      >
+                        <button className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-all duration-200">
+                          清理缓存
+                        </button>
+                      </Popconfirm>
+                    </div>
+                  </div>
+
+                  <div className="glass-card p-6">
+                    <Form form={form} layout="inline" onFinish={handleAddUserRepo} className="flex flex-wrap gap-3">
+                      <Form.Item
+                        name="repoUrl"
+                        rules={[{ required: true, message: '请输入仓库URL' }]}
+                        className="flex-1 min-w-[300px]"
+                      >
+                        <Input
+                          placeholder="https://github.com/user/repo 或 gitee/user/project"
+                          prefix={<GithubOutlined />}
+                          size="large"
+                        />
+                      </Form.Item>
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit" icon={<PlusOutlined />} size="large">
+                          添加仓库
+                        </Button>
+                      </Form.Item>
+                    </Form>
+                  </div>
+
+                  <div className="glass-card p-6">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">我的仓库列表</h3>
+                    {loadingRepos ? (
+                      <div className="text-center py-8 text-gray-500">加载中...</div>
+                    ) : (
+                      <List
+                        dataSource={userRepos}
+                        renderItem={(repo) => (
+                          <List.Item
+                            className="!border-b border-gray-200/50 last:!border-b-0"
+                            actions={[
+                              <Popconfirm
+                                key="delete"
+                                title="确定要删除这个仓库吗?"
+                                onConfirm={() => handleRemoveUserRepo(repo.id)}
+                              >
+                                <Button size="small" danger icon={<DeleteOutlined />}>
+                                  删除
+                                </Button>
+                              </Popconfirm>,
+                            ]}
+                          >
+                            <List.Item.Meta
+                              avatar={
+                                <div className="text-4xl">
+                                  {repo.platform === 'github' ? '🐙' : '🌐'}
+                                </div>
+                              }
+                              title={<span className="font-semibold text-gray-800">{repo.repoUrl}</span>}
+                              description={
+                                <Space>
+                                  <Tag color={repo.platform === 'github' ? 'blue' : 'orange'}>
+                                    {repo.platform}
+                                  </Tag>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(repo.createdAt).toLocaleDateString()}
+                                  </span>
+                                </Space>
+                              }
+                            />
+                          </List.Item>
+                        )}
+                        locale={{ emptyText: '暂无仓库,请添加' }}
+                      />
+                    )}
+                  </div>
+                </div>
+              ),
+            },
+
+            // 本地上传课件
+            {
+              key: 'upload',
+              label: <span className="text-base font-medium">📤 本地上传课件</span>,
+              children: (
+                <div className="glass-card p-6">
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-2xl font-bold text-gray-800 mb-2">导入HTML课件</h3>
+                      <p className="text-gray-600">
+                        请上传符合规范的HTML课件文件。课件将被自动切分为多个页面，并统一处理数学公式。
+                      </p>
+                    </div>
+                    <Upload {...uploadProps}>
+                      <Button icon={<UploadOutlined />} size="large">选择HTML文件（可多选）</Button>
+                    </Upload>
+
+                    {coursewares.length > 0 && (
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-800 mb-4">
+                          已导入的课件（{coursewares.length}个）：
+                        </h4>
+                        <div className="space-y-3">
+                          {coursewares.map((cw, index) => (
+                            <div
+                              key={index}
+                              className={`bg-white/60 backdrop-blur-sm border border-white/40 p-4 rounded-xl transition-all duration-200 cursor-move ${
+                                draggedIndex === index ? 'opacity-50' : ''
+                              } ${
+                                dragOverIndex === index ? 'border-2 border-dashed border-blue-400' : ''
+                              }`}
+                              draggable
+                              onDragStart={() => setDraggedIndex(index)}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                setDragOverIndex(index);
+                              }}
+                              onDragLeave={() => setDragOverIndex(null)}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (draggedIndex !== null && draggedIndex !== index) {
+                                  reorderCoursewares(draggedIndex, index);
+                                }
+                                setDraggedIndex(null);
+                                setDragOverIndex(null);
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <DragOutlined className="text-gray-400 text-xl" />
+                                <span className="flex-1 font-medium text-gray-800">
+                                  {index + 1}. {cw.title}
+                                </span>
+                                <Button
+                                  size="small"
+                                  type="link"
+                                  onClick={() => {
+                                    setCurrentCoursewareIndex(index);
+                                    navigate('/catalog');
+                                  }}
+                                >
+                                  查看目录
+                                </Button>
+                                <Popconfirm
+                                  title="确定要删除这个课件吗?"
+                                  onConfirm={() => {
+                                    removeCourseware(index);
+                                    message.success('已删除');
+                                  }}
+                                >
+                                  <Button size="small" danger type="link" icon={<DeleteOutlined />}>
+                                    删除
+                                  </Button>
+                                </Popconfirm>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ),
+            },
+
+            // 提示词生成器
+            {
+              key: 'prompt',
+              label: <span className="text-base font-medium">✨ 生成提示词</span>,
+              children: <PromptGenerator />,
+            },
+          ]}
+        />
 
       </div>
     </ManagementLayout>
@@ -361,4 +382,3 @@ const ConfigPage: React.FC = () => {
 };
 
 export default ConfigPage;
-
