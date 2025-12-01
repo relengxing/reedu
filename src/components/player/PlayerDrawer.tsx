@@ -1,10 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Drawer, Switch, Divider, Space, Typography, Button, InputNumber, Tabs } from 'antd';
+import { Drawer, Switch, Divider, Space, Typography, Button, InputNumber, Tabs, Select } from 'antd';
 import { HomeOutlined, ClockCircleOutlined, UserOutlined, PlayCircleOutlined, PauseCircleOutlined, StopOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import SimplifiedRollCall from './SimplifiedRollCall';
 
 const { Text, Title } = Typography;
+
+// Live2D 模型列表
+export const LIVE2D_MODELS = [
+  {
+    label: 'Haru - 打招呼',
+    value: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/haru/haru_greeter_t03.model3.json',
+  },
+  {
+    label: 'Shizuku - 经典',
+    value: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/shizuku/shizuku.model.json',
+  },
+  {
+    label: 'Hijiki - 可爱',
+    value: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/hijiki/hijiki.model.json',
+  },
+  {
+    label: 'Miku - 初音未来',
+    value: 'https://cdn.jsdelivr.net/gh/guansss/pixi-live2d-display/test/assets/miku/miku.model.json',
+  },
+];
 
 interface PlayerDrawerProps {
   visible: boolean;
@@ -13,6 +33,10 @@ interface PlayerDrawerProps {
   onShowPageButtonsChange: (show: boolean) => void;
   showCatalog: boolean;
   onShowCatalogChange: (show: boolean) => void;
+  showLive2D: boolean;
+  onShowLive2DChange: (show: boolean) => void;
+  live2DModel: string;
+  onLive2DModelChange: (model: string) => void;
   countdownTime: number;
   isCountdownRunning: boolean;
   isCountdownPaused: boolean;
@@ -29,6 +53,10 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
   onShowPageButtonsChange,
   showCatalog,
   onShowCatalogChange,
+  showLive2D,
+  onShowLive2DChange,
+  live2DModel,
+  onLive2DModelChange,
   countdownTime,
   isCountdownRunning,
   isCountdownPaused,
@@ -65,6 +93,10 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
   useEffect(() => {
     localStorage.setItem('player_showCatalog', String(showCatalog));
   }, [showCatalog]);
+
+  useEffect(() => {
+    localStorage.setItem('player_showLive2D', String(showLive2D));
+  }, [showLive2D]);
 
   const CountdownTab = (
     <div>
@@ -180,7 +212,7 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
             </div>
           </div>
 
-          <div>
+          <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Text>显示目录</Text>
               <Switch
@@ -188,6 +220,30 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
                 onChange={onShowCatalogChange}
               />
             </div>
+          </div>
+
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <Text>显示数字人</Text>
+              <Switch
+                checked={showLive2D}
+                onChange={onShowLive2DChange}
+              />
+            </div>
+            {showLive2D && (
+              <div style={{ marginTop: '8px' }}>
+                <Text style={{ fontSize: '12px', color: '#666' }}>选择模型</Text>
+                <Select
+                  value={live2DModel}
+                  onChange={onLive2DModelChange}
+                  style={{ width: '100%', marginTop: '8px' }}
+                  options={LIVE2D_MODELS}
+                />
+                <Text style={{ fontSize: '11px', color: '#999', display: 'block', marginTop: '8px' }}>
+                  💡 提示：按住数字人可以拖动位置
+                </Text>
+              </div>
+            )}
           </div>
         </div>
 

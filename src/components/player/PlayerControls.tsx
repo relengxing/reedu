@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import FloatingToolButton from './FloatingToolButton';
-import PlayerDrawer from './PlayerDrawer';
+import PlayerDrawer, { LIVE2D_MODELS } from './PlayerDrawer';
 import CatalogFloatingButton from './CatalogFloatingButton';
 import CatalogDrawer from './CatalogDrawer';
 import CountdownDisplay from '../CountdownDisplay';
 import CountdownEndAnimation from '../CountdownEndAnimation';
+import Live2DWidget from '../Live2DWidget';
 import type { CoursewareData } from '../../types';
 
 interface PlayerControlsProps {
@@ -25,6 +26,16 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
   const [showCatalog, setShowCatalog] = useState(() => {
     const saved = localStorage.getItem('player_showCatalog');
     return saved === 'true';
+  });
+
+  const [showLive2D, setShowLive2D] = useState(() => {
+    const saved = localStorage.getItem('player_showLive2D');
+    return saved === 'true';
+  });
+
+  const [live2DModel, setLive2DModel] = useState(() => {
+    const saved = localStorage.getItem('player_live2DModel');
+    return saved || LIVE2D_MODELS[0].value;
   });
 
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -91,6 +102,11 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
     setShowCountdownEndAnimation(false);
   };
 
+  const handleLive2DModelChange = (model: string) => {
+    setLive2DModel(model);
+    localStorage.setItem('player_live2DModel', model);
+  };
+
   return (
     <>
       {/* 右上角工具按钮 */}
@@ -110,6 +126,10 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
         onShowPageButtonsChange={setShowPageButtons}
         showCatalog={showCatalog}
         onShowCatalogChange={setShowCatalog}
+        showLive2D={showLive2D}
+        onShowLive2DChange={setShowLive2D}
+        live2DModel={live2DModel}
+        onLive2DModelChange={handleLive2DModelChange}
         countdownTime={countdownTime}
         isCountdownRunning={isCountdownRunning}
         isCountdownPaused={isCountdownPaused}
@@ -140,6 +160,13 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
       <CountdownEndAnimation
         visible={showCountdownEndAnimation}
         onComplete={handleCountdownEndAnimationComplete}
+      />
+
+      {/* Live2D 数字人 */}
+      <Live2DWidget
+        visible={showLive2D}
+        modelUrl={live2DModel}
+        onClose={() => setShowLive2D(false)}
       />
 
       {/* 导出显示设置供父组件使用 */}
