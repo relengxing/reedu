@@ -4,7 +4,7 @@ import { HomeOutlined, ClockCircleOutlined, UserOutlined, PlayCircleOutlined, Pa
 import { useNavigate } from 'react-router-dom';
 import SimplifiedRollCall from './SimplifiedRollCall';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 // Live2D 模型列表
 export const LIVE2D_MODELS = [
@@ -69,10 +69,23 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
   const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(0);
 
-  useEffect(() => {
-    const totalSeconds = minutes * 60 + seconds;
-    onCountdownTimeChange(totalSeconds);
-  }, [minutes, seconds, onCountdownTimeChange]);
+  // 处理分钟变化
+  const handleMinutesChange = (value: number | null) => {
+    const newMinutes = value || 0;
+    setMinutes(newMinutes);
+    if (!isCountdownRunning && !isCountdownPaused) {
+      onCountdownTimeChange(newMinutes * 60 + seconds);
+    }
+  };
+
+  // 处理秒数变化
+  const handleSecondsChange = (value: number | null) => {
+    const newSeconds = value || 0;
+    setSeconds(newSeconds);
+    if (!isCountdownRunning && !isCountdownPaused) {
+      onCountdownTimeChange(minutes * 60 + newSeconds);
+    }
+  };
 
   const formatTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -111,8 +124,8 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
                   min={0}
                   max={59}
                   value={minutes}
-                  onChange={(value) => setMinutes(value || 0)}
-                  disabled={isCountdownRunning}
+                  onChange={handleMinutesChange}
+                  disabled={isCountdownRunning || isCountdownPaused}
                   style={{ width: 70, marginLeft: '8px' }}
                 />
               </div>
@@ -122,8 +135,8 @@ const PlayerDrawer: React.FC<PlayerDrawerProps> = ({
                   min={0}
                   max={59}
                   value={seconds}
-                  onChange={(value) => setSeconds(value || 0)}
-                  disabled={isCountdownRunning}
+                  onChange={handleSecondsChange}
+                  disabled={isCountdownRunning || isCountdownPaused}
                   style={{ width: 70, marginLeft: '8px' }}
                 />
               </div>

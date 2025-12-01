@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import FloatingToolButton from './FloatingToolButton';
 import PlayerDrawer, { LIVE2D_MODELS } from './PlayerDrawer';
 import CatalogFloatingButton from './CatalogFloatingButton';
@@ -50,7 +50,7 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
 
   // 倒计时逻辑
   useEffect(() => {
-    if (isCountdownRunning && countdownTime > 0) {
+    if (isCountdownRunning) {
       countdownIntervalRef.current = window.setInterval(() => {
         setCountdownTime((prev) => {
           if (prev <= 1) {
@@ -74,33 +74,31 @@ const PlayerControls: React.FC<PlayerControlsProps> = ({
         clearInterval(countdownIntervalRef.current);
       }
     };
-  }, [isCountdownRunning, countdownTime]);
+  }, [isCountdownRunning]);
 
-  const handleCountdownTimeChange = (seconds: number) => {
+  const handleCountdownTimeChange = useCallback((seconds: number) => {
     setCountdownTime(seconds);
-  };
+  }, []);
 
-  const handleCountdownStart = () => {
-    if (countdownTime > 0) {
-      setIsCountdownRunning(true);
-      setIsCountdownPaused(false);
-    }
-  };
+  const handleCountdownStart = useCallback(() => {
+    setIsCountdownRunning(true);
+    setIsCountdownPaused(false);
+  }, []);
 
-  const handleCountdownPause = () => {
+  const handleCountdownPause = useCallback(() => {
     setIsCountdownRunning(false);
     setIsCountdownPaused(true);
-  };
+  }, []);
 
-  const handleCountdownStop = () => {
+  const handleCountdownStop = useCallback(() => {
     setIsCountdownRunning(false);
     setIsCountdownPaused(false);
     setCountdownTime(0);
-  };
+  }, []);
 
-  const handleCountdownEndAnimationComplete = () => {
+  const handleCountdownEndAnimationComplete = useCallback(() => {
     setShowCountdownEndAnimation(false);
-  };
+  }, []);
 
   const handleLive2DModelChange = (model: string) => {
     setLive2DModel(model);
