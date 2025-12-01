@@ -187,7 +187,7 @@ export const CoursewareContext = createContext<CoursewareContextType>({
 });
 
 export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   
   // 外部加载的课件和组
   const [externalCoursewares, setExternalCoursewares] = useState<CoursewareData[]>([]);
@@ -199,6 +199,12 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // 防止重复加载的标志
   const [hasLoadedUserRepos, setHasLoadedUserRepos] = useState(false);
+  
+  // 记录上次加载时的用户ID，用于检测用户切换
+  const [lastLoadedUserId, setLastLoadedUserId] = useState<string | null>(null);
+  
+  // 防止初始化时保存空数据到localStorage
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // 只使用外部加载的课件（删除编译期课件）
   const allBundledCoursewares = externalCoursewares;
@@ -274,9 +280,14 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.log(`[CoursewareContext] 外部课件加载完成，coursewares 无需更新`);
       }
       
+      // 标记初始化完成，允许后续保存到localStorage
+      setIsInitialized(true);
+      
       console.log('[CoursewareContext] 成功从外部仓库加载课件');
     } catch (error) {
       console.error('[CoursewareContext] 从外部仓库加载课件失败:', error);
+      // 即使加载失败，也标记为已初始化，允许用户手动操作
+      setIsInitialized(true);
       throw error;
     } finally {
       setIsLoading(false);
@@ -298,14 +309,36 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // 用户登录后，自动加载用户绑定的仓库
+  // 等待认证状态初始化完成（authLoading=false）后再加载
   useEffect(() => {
-    if (isAuthenticated && user && !hasLoadedUserRepos && !isLoading) {
-      console.log('[CoursewareContext] 用户已登录，加载用户仓库');
+    if (authLoading) {
+      console.log('[CoursewareContext] 认证状态初始化中，等待...');
+      return;
+    }
+
+    const currentUserId = user?.id || null;
+    
+    // 检测用户状态是否发生了变化（登录、登出、切换用户）
+    const userChanged = currentUserId !== lastLoadedUserId;
+    
+    // 需要加载的情况：
+    // 1. 从未加载过 (!hasLoadedUserRepos)
+    // 2. 用户状态发生了变化 (userChanged && hasLoadedUserRepos)
+    const shouldLoad = (!hasLoadedUserRepos || userChanged) && !isLoading;
+
+    if (shouldLoad) {
+      if (isAuthenticated && user) {
+        console.log('[CoursewareContext] 用户已登录，加载用户仓库', user.id);
+      } else {
+        console.log('[CoursewareContext] 用户未登录，加载本地仓库');
+      }
+      
       setHasLoadedUserRepos(true);
+      setLastLoadedUserId(currentUserId);
       loadUserRepos();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user]);
 
   // 加载用户仓库的课件
   const loadUserRepos = async () => {
@@ -331,6 +364,8 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       if (userRepos.length === 0) {
         console.log('[CoursewareContext] 没有绑定仓库');
+        // 即使没有仓库，也标记为已初始化
+        setIsInitialized(true);
         setIsLoading(false);
         return;
       }
@@ -354,9 +389,12 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // 当coursewares变化时，保存到localStorage
+  // 但要等初始化完成后才保存，避免初始化时的空数组覆盖原有数据
   useEffect(() => {
-    saveCoursewares(coursewares);
-  }, [coursewares]);
+    if (isInitialized) {
+      saveCoursewares(coursewares);
+    }
+  }, [coursewares, isInitialized]);
 
   // 当currentCoursewareIndex变化时，保存到localStorage
   useEffect(() => {
@@ -368,6 +406,9 @@ export const CoursewareProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [currentCoursewareIndex]);
 
   const addCourseware = (courseware: CoursewareData) => {
+    // 用户手动添加课件，标记为已初始化
+    setIsInitialized(true);
+    
     setCoursewares((prev) => {
       // 检查是否已存在相同的课件（通过sourcePath或完整仓库信息判断）
       const isDuplicate = prev.some(cw => {

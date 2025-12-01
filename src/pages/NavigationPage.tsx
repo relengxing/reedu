@@ -5,20 +5,12 @@ import ManagementLayout from '../components/ManagementLayout';
 
 const NavigationPage: React.FC = () => {
   const navigate = useNavigate();
-  const { bundledCoursewareGroups, coursewares, addBundledCourseware, loadUserRepos } = useCourseware();
+  const { bundledCoursewareGroups, coursewares, addBundledCourseware, isLoading } = useCourseware();
   const [pendingNavigation, setPendingNavigation] = useState<{ sourcePath: string } | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const prevCoursewaresLengthRef = useRef(coursewares.length);
-  const hasLoadedRef = useRef(false);
   
-  // 页面加载时初始化课件（仅执行一次）
-  useEffect(() => {
-    if (!hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      loadUserRepos(); // 延迟加载课件
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 空依赖数组，只在组件挂载时执行一次
+  // 不再在这里手动调用 loadUserRepos，由 CoursewareContext 统一管理加载时机
 
   // 监听coursewares变化，当新课件添加完成后自动跳转
   useEffect(() => {
@@ -104,6 +96,23 @@ const NavigationPage: React.FC = () => {
     })));
   }, [bundledCoursewareGroups]);
 
+  // 显示加载状态
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="glass-card p-12 text-center max-w-md">
+          <div className="text-6xl mb-6 animate-bounce">📚</div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-4">加载中...</h3>
+          <p className="text-gray-600 mb-6">正在加载课件，请稍候</p>
+          <div className="flex justify-center">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 加载完成后，如果没有课件组，显示空状态
   if (bundledCoursewareGroups.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">

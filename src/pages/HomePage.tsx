@@ -20,14 +20,7 @@ const HomePage: React.FC = () => {
       description: '管理仓库和上传课件',
       path: '/config',
       gradient: 'from-amber-400 to-orange-400',
-    },
-    {
-      icon: '📚',
-      title: '课件目录',
-      description: '查看当前课件的详细目录',
-      path: '/catalog',
-      gradient: 'from-purple-400 to-pink-400',
-    },
+    }
   ];
 
   const steps = [
@@ -78,7 +71,7 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-slide-up">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16 animate-slide-up">
           {features.map((feature, index) => (
             <div
               key={index}
