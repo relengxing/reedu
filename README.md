@@ -171,6 +171,39 @@ npm run build
 5. 数学公式必须使用KaTeX语法，框架会自动处理渲染
 6. 打包时，编译期导入的课件会被内联到JavaScript bundle中，确保所有内容都在一个包中
 
+## 常见问题
+
+### 刷新页面后白屏问题 ✅ 已修复
+
+**问题描述**：打开课件后刷新页面会出现白屏，浏览器控制台显示 MIME type 错误。
+
+**解决方案**：已在最新版本中修复。Vite 配置现在会自动根据构建目标选择正确的资源路径：
+- Web 部署使用绝对路径（`/assets/xxx.js`）
+- Tauri 桌面应用使用相对路径（`./assets/xxx.js`）
+
+**构建命令**：
+```bash
+# Web 部署（推荐）
+npm run build
+
+# 预览验证
+npm run preview
+```
+
+**详细说明**：查看 `刷新白屏修复总结.md` 和 `VERIFICATION_GUIDE.md`
+
+### 部署后路由404问题
+
+如果部署到生产环境后刷新页面出现404，需要配置服务器的 SPA 路由重定向。
+
+项目已包含常见平台的配置文件：
+- **Netlify**：`public/_redirects` ✅
+- **Vercel**：`vercel.json` ✅
+- **Apache**：`public/.htaccess` ✅
+- **Nginx**：参考 `nginx.conf.example`
+
+详细说明请查看 `docs/路由和部署说明.md`
+
 ## 许可证
 
 MIT
