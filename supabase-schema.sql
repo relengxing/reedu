@@ -111,7 +111,7 @@ $$ LANGUAGE plpgsql;
 
 -- 7. 为courseware_likes表添加触发器
 DROP TRIGGER IF EXISTS sync_courseware_likes_count ON reedu.courseware_likes;
-CREATE TRIGGER sync_courseware_likes_count
+CREATE TRIGGER sync_courseware_likes_count 
 AFTER INSERT OR DELETE ON reedu.courseware_likes
 FOR EACH ROW
 EXECUTE FUNCTION reedu.sync_likes_count();
